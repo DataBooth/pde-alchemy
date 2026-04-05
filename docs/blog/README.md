@@ -8,6 +8,7 @@ This series records each merged milestone in short, practical notes.
 - `docs/blog/04-examples-and-docs.md` — canonical examples and CLI documentation pass.
 - `docs/blog/05-marimo-notebook-explorer.md` — interactive notebook workflow.
 - `docs/blog/06-workflow-recipes.md` — convenience recipes and workflow clarity improvements.
+- `docs/blog/07-market-curves-and-quality-gates.md` — market curve/surface support and progressive quality tooling.
 
 Each post includes:
 - what changed,

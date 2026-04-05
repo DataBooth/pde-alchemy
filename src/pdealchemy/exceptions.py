@@ -13,6 +13,7 @@ class PDEAlchemyError(Exception):
         suggestion: str | None = None,
         details: str | None = None,
     ) -> None:
+        """Initialise an error with optional details and remediation guidance."""
         super().__init__(message)
         self.message = message
         self.suggestion = suggestion

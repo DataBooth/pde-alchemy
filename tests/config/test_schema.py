@@ -18,6 +18,7 @@ def test_pricing_schema_contains_expected_sections() -> None:
     assert "process" in properties
     assert "instrument" in properties
     assert "numerics" in properties
+    assert "market" in properties
 
 
 def test_write_pricing_schema_to_disk(tmp_path: Path) -> None:

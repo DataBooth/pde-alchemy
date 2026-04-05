@@ -1,0 +1,52 @@
+[metadata]
+name = "Vanilla call with market curve and surface inputs"
+description = "Reference vanilla configuration using zero-rate curve nodes and a Black volatility surface."
+tags = ["vanilla", "market", "curve", "surface"]
+
+[process]
+state_variables = ["S"]
+parameters = { S0 = 100.0, r = 0.035, q = 0.01, sigma = 0.22, K = 100.0 }
+drift = { S = "(r - q) * S" }
+diffusion = { S = "sigma * S" }
+
+[instrument]
+kind = "vanilla_option"
+payoff = "max(S - K, 0)"
+maturity = 1.0
+exercise = "european"
+style = "call"
+
+[market.risk_free_curve]
+kind = "zero_curve"
+times = [0.25, 0.5, 1.0]
+rates = [0.033, 0.034, 0.035]
+
+[market.dividend_curve]
+kind = "flat"
+rate = 0.01
+
+[market.volatility]
+kind = "surface"
+times = [0.25, 0.5, 1.0]
+strikes = [90.0, 100.0, 110.0]
+vols = [
+  [0.25, 0.23, 0.22],
+  [0.24, 0.22, 0.21],
+  [0.23, 0.21, 0.20],
+]
+
+[numerics]
+backend = "quantlib"
+scheme = "crank_nicolson"
+time_steps = 300
+damping_steps = 0
+
+[numerics.grid]
+lower = { S = 0.0 }
+upper = { S = 400.0 }
+points = { S = 501 }
+
+[numerics.monte_carlo]
+paths = 20000
+seed = 20260405
+antithetic = true

@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import cast
 
 import sympy as sp
 
 from pdealchemy.exceptions import MathBridgeError
 
-_ALLOWED_FUNCTIONS: dict[str, Any] = {
+_ALLOWED_FUNCTIONS: dict[str, object] = {
     "abs": sp.Abs,
     "exp": sp.exp,
     "log": sp.log,
@@ -33,9 +34,9 @@ class CompiledExpression:
     """Numerically evaluable expression callable."""
 
     symbol_order: tuple[str, ...]
-    evaluator: Any
+    evaluator: Callable[..., object]
 
-    def __call__(self, *args: Any) -> Any:
+    def __call__(self, *args: object) -> object:
         """Evaluate the compiled expression using positional arguments."""
         if len(args) != len(self.symbol_order):
             raise MathBridgeError(
@@ -75,10 +76,14 @@ def parse_expression(
         raise MathBridgeError("Expression must not be empty.")
 
     symbol_locals = {name: sp.Symbol(name) for name in allowed_symbols}
-    locals_dict = {**symbol_locals, **_ALLOWED_FUNCTIONS}
+    locals_dict: dict[str, object] = {**symbol_locals, **_ALLOWED_FUNCTIONS}
 
     try:
-        parsed_expression = sp.sympify(expression, locals=locals_dict, evaluate=False)
+        parsed_expression = sp.sympify(  # ty: ignore[no-matching-overload]
+            expression,
+            locals=locals_dict,
+            evaluate=False,
+        )
     except (sp.SympifyError, TypeError) as exc:
         raise MathBridgeError(
             "Failed to parse symbolic expression.",
@@ -121,13 +126,18 @@ def compile_expression(
         if symbol_name in parsed_expression.symbols
     }
 
-    substituted_expression = parsed_expression.sympy_expression.subs(relevant_substitutions)
+    substituted_expression = parsed_expression.sympy_expression.subs(  # ty: ignore[no-matching-overload]
+        relevant_substitutions
+    )
     remaining_symbols = tuple(
         symbol_name
         for symbol_name in parsed_expression.symbols
         if symbol_name not in relevant_substitutions
     )
     ordered_symbols = [sp.Symbol(name) for name in remaining_symbols]
-    evaluator = sp.lambdify(ordered_symbols, substituted_expression, modules=["numpy"])
+    evaluator = cast(
+        Callable[..., object],
+        sp.lambdify(ordered_symbols, substituted_expression, modules=["numpy"]),
+    )
 
     return CompiledExpression(symbol_order=remaining_symbols, evaluator=evaluator)

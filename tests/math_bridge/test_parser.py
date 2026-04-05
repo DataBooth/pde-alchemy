@@ -47,6 +47,8 @@ def test_parse_expression_tracks_symbols() -> None:
 def test_parse_expression_rejects_unknown_symbols() -> None:
     with pytest.raises(MathBridgeError, match="unknown symbols"):
         parse_expression("r * X", allowed_symbols={"r", "S"})
+
+
 def test_parse_expression_rejects_unsupported_functions() -> None:
     with pytest.raises(MathBridgeError, match="unsupported function"):
         parse_expression("sin(S)", allowed_symbols={"S"})
