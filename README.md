@@ -45,9 +45,14 @@ See `examples/vanilla_market_curve_surface.toml` for a complete configuration.
 
 Current limitation:
 - Exotic Monte Carlo routes currently require flat curves and constant volatility.
+- `py_pde` backend currently supports 1D vanilla European routes (no exotic features).
 
 ## marimo Notebook Explorer
 An interactive marimo notebook example is available at `examples/notebooks/price_explorer.py`.
+It now includes:
+- side-by-side vanilla pricing comparison across QuantLib and `py_pde`,
+- finite-difference Greeks estimates,
+- Plotly charts for backend price comparison and spot-sweep sensitivity.
 
 Launch it with either command:
 ```bash
