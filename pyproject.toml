@@ -57,6 +57,7 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 89
 
 [tool.ruff]
 line-length = 100
