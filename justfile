@@ -19,9 +19,20 @@ check:
 
 run *args:
     uv run pdealchemy {{args}}
+price config="examples/vanilla_european_call.toml":
+    uv run pdealchemy price {{config}}
+
+validate config="examples/vanilla_european_call.toml" *args:
+    uv run pdealchemy validate {{config}} {{args}}
+
+explain config="examples/vanilla_european_call.toml" format="markdown":
+    uv run pdealchemy explain {{config}} --format {{format}}
 
 notebook file="examples/notebooks/price_explorer.py":
     uv run marimo edit {{file}}
 
 notebook-run file="examples/notebooks/price_explorer.py":
     uv run marimo run {{file}}
+
+notebook-check file="examples/notebooks/price_explorer.py":
+    uv run marimo check {{file}}
