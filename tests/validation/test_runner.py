@@ -91,3 +91,100 @@ def test_validation_runner_rejects_non_flat_market_structure() -> None:
 
     with pytest.raises(ValidationError, match="requires constant market.volatility"):
         runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_rejects_non_s_state_variable() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["process"]["state_variables"] = ["X"]
+    config_data["process"]["drift"] = {"X": "r * X"}
+    config_data["process"]["diffusion"] = {"X": "sigma * X"}
+    config_data["numerics"]["grid"]["lower"] = {"X": 0.0}
+    config_data["numerics"]["grid"]["upper"] = {"X": 400.0}
+    config_data["numerics"]["grid"]["points"] = {"X": 401}
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="supports 1D state variable S only"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_rejects_non_european_exercise() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["instrument"]["exercise"] = "american"
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="supports European exercise only"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_requires_style() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["instrument"]["style"] = None
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="requires instrument.style"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_requires_spot_and_strike() -> None:
+    config_data = _valid_config().model_dump()
+    del config_data["process"]["parameters"]["S0"]
+    del config_data["process"]["parameters"]["K"]
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="requires S0 \\(or spot\\) and K \\(or strike\\)"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_requires_rate_and_volatility() -> None:
+    config_data = _valid_config().model_dump()
+    del config_data["process"]["parameters"]["r"]
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="requires r and sigma"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_rejects_non_flat_risk_free_curve() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["market"] = {
+        "risk_free_curve": {
+            "kind": "zero_curve",
+            "times": [0.25, 1.0],
+            "rates": [0.03, 0.035],
+        }
+    }
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="requires a flat market.risk_free_curve"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_rejects_non_flat_dividend_curve() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["market"] = {
+        "dividend_curve": {
+            "kind": "zero_curve",
+            "times": [0.25, 1.0],
+            "rates": [0.01, 0.012],
+        }
+    }
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="requires a flat market.dividend_curve"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_supports_flat_market_overrides() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["market"] = {
+        "risk_free_curve": {"kind": "flat", "rate": 0.04},
+        "dividend_curve": {"kind": "flat", "rate": 0.01},
+        "volatility": {"kind": "constant", "vol": 0.25},
+    }
+    runner = ValidationRunner()
+    outcome = runner.run_analytical_black_scholes(
+        PricingConfig.model_validate(config_data),
+        tolerance=0.75,
+    )
+
+    assert outcome.passed
