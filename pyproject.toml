@@ -33,6 +33,7 @@ interactive = [
   "plotly>=6.0.1",
 ]
 dev = [
+  "hypothesis>=6.131.0",
   "pre-commit>=4.2.0",
   "pytest>=8.3.5",
   "pytest-cov>=6.1.1",
@@ -49,6 +50,13 @@ packages = ["src/pdealchemy"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["pdealchemy"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 line-length = 100

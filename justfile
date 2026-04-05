@@ -6,6 +6,8 @@ install:
 
 test:
     uv run pytest
+test-cov:
+    uv run pytest --cov=src/pdealchemy --cov-report=term-missing --cov-report=xml
 
 lint:
     uv run ruff check src tests
@@ -18,7 +20,7 @@ format:
 check:
     just lint
     just typecheck
-    just test
+    just test-cov
 
 run *args:
     uv run pdealchemy {{args}}
