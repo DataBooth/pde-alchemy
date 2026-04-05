@@ -57,3 +57,13 @@ just notebook-check
 ```
 
 `just notebook-run` starts a server and keeps running until interrupted. Exiting with Ctrl-C returns code `130`, which is expected behaviour.
+
+## Validation Strategy
+- Philosophy: `VALIDATION_PHILOSOPHY.md`
+- Practical strategy and trust boundaries: `docs/validation_strategy.md`
+
+## Development Blog
+The project now keeps a progressive engineering log under `docs/blog/`.
+
+Start here:
+- `docs/blog/README.md`
