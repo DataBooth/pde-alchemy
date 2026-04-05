@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from pdealchemy.config.models import PricingConfig
 from pdealchemy.exceptions import MathBridgeError
@@ -72,3 +74,47 @@ def test_build_symbolic_problem_from_config() -> None:
         substitutions=symbolic_problem.parameter_values,
     )
     assert compiled_drift(100.0) == pytest.approx(5.0)
+
+
+_FINITE_FLOATS = st.floats(
+    min_value=-1_000.0,
+    max_value=1_000.0,
+    allow_nan=False,
+    allow_infinity=False,
+)
+
+_RATE_FLOATS = st.floats(
+    min_value=-0.5,
+    max_value=0.5,
+    allow_nan=False,
+    allow_infinity=False,
+)
+
+
+@given(rate=_RATE_FLOATS, spot=_FINITE_FLOATS, strike=_FINITE_FLOATS)
+def test_compile_expression_linear_identity_property(
+    rate: float,
+    spot: float,
+    strike: float,
+) -> None:
+    parsed = parse_expression("r * S + K", allowed_symbols={"r", "S", "K"})
+    compiled = compile_expression(parsed, substitutions={"r": rate, "K": strike})
+
+    assert compiled.symbol_order == ("S",)
+    assert compiled(spot) == pytest.approx(rate * spot + strike)
+
+
+@given(rate=_RATE_FLOATS, spot=_FINITE_FLOATS, strike=_FINITE_FLOATS)
+def test_compile_expression_zero_arity_after_full_substitution_property(
+    rate: float,
+    spot: float,
+    strike: float,
+) -> None:
+    parsed = parse_expression("r * S + K", allowed_symbols={"r", "S", "K"})
+    compiled = compile_expression(
+        parsed,
+        substitutions={"r": rate, "S": spot, "K": strike},
+    )
+
+    assert compiled.symbol_order == ()
+    assert compiled() == pytest.approx(rate * spot + strike)

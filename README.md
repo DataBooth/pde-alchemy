@@ -79,6 +79,7 @@ Commands:
 ```bash
 just lint
 just typecheck
+just test-cov
 just check
 ```
 
