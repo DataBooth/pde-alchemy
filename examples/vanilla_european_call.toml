@@ -1,0 +1,33 @@
+[metadata]
+name = "Vanilla European call baseline"
+description = "Reference vanilla configuration for schema, explain, and pricing."
+tags = ["vanilla", "benchmark"]
+
+[process]
+state_variables = ["S"]
+parameters = { S0 = 100.0, r = 0.05, sigma = 0.2, K = 100.0 }
+drift = { S = "r * S" }
+diffusion = { S = "sigma * S" }
+
+[instrument]
+kind = "vanilla_option"
+payoff = "max(S - K, 0)"
+maturity = 1.0
+exercise = "european"
+style = "call"
+
+[numerics]
+backend = "quantlib"
+scheme = "crank_nicolson"
+time_steps = 250
+damping_steps = 0
+
+[numerics.grid]
+lower = { S = 0.0 }
+upper = { S = 400.0 }
+points = { S = 401 }
+
+[numerics.monte_carlo]
+paths = 20000
+seed = 1234
+antithetic = true
