@@ -9,12 +9,15 @@ test:
 
 lint:
     uv run ruff check src tests
+typecheck:
+    uv run ty check src
 
 format:
     uv run ruff format src tests
 
 check:
     just lint
+    just typecheck
     just test
 
 run *args:
@@ -36,3 +39,9 @@ notebook-run file="examples/notebooks/price_explorer.py":
 
 notebook-check file="examples/notebooks/price_explorer.py":
     uv run marimo check {{file}}
+
+precommit-install:
+    uv run pre-commit install
+
+precommit-run:
+    uv run pre-commit run --all-files

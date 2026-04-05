@@ -71,10 +71,23 @@ def test_validation_runner_fails_with_strict_tolerance() -> None:
 
 def test_validation_runner_rejects_exotic_features() -> None:
     config_data = _valid_config().model_dump()
-    config_data["features"] = {
-        "barrier": {"type": "up_and_out", "level": 145.0, "rebate": 0.0}
-    }
+    config_data["features"] = {"barrier": {"type": "up_and_out", "level": 145.0, "rebate": 0.0}}
     runner = ValidationRunner()
 
     with pytest.raises(ValidationError, match="only available for non-exotic configs"):
+        runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))
+
+
+def test_validation_runner_rejects_non_flat_market_structure() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["market"] = {
+        "volatility": {
+            "kind": "term_curve",
+            "times": [0.25, 1.0],
+            "vols": [0.2, 0.22],
+        }
+    }
+    runner = ValidationRunner()
+
+    with pytest.raises(ValidationError, match="requires constant market.volatility"):
         runner.run_analytical_black_scholes(PricingConfig.model_validate(config_data))

@@ -100,3 +100,70 @@ def test_rejects_dividend_time_beyond_maturity() -> None:
         match="dividends.events.time must be <= instrument.maturity",
     ):
         PricingConfig.model_validate(invalid)
+
+
+def test_accepts_market_curve_and_surface_config() -> None:
+    valid = _valid_config()
+    valid["market"] = {
+        "risk_free_curve": {
+            "kind": "zero_curve",
+            "times": [0.25, 1.0],
+            "rates": [0.03, 0.035],
+        },
+        "dividend_curve": {
+            "kind": "flat",
+            "rate": 0.01,
+        },
+        "volatility": {
+            "kind": "surface",
+            "times": [0.25, 1.0],
+            "strikes": [90.0, 100.0, 110.0],
+            "vols": [
+                [0.24, 0.22, 0.21],
+                [0.25, 0.23, 0.22],
+            ],
+        },
+    }
+
+    config_data = PricingConfig.model_validate(valid)
+    assert config_data.market is not None
+    assert config_data.market.risk_free_curve is not None
+    assert config_data.market.volatility is not None
+
+
+def test_rejects_surface_shape_mismatch() -> None:
+    invalid = _valid_config()
+    invalid["market"] = {
+        "volatility": {
+            "kind": "surface",
+            "times": [0.25, 1.0],
+            "strikes": [90.0, 100.0, 110.0],
+            "vols": [
+                [0.24, 0.22],
+                [0.25, 0.23],
+            ],
+        }
+    }
+
+    with pytest.raises(
+        ValidationError,
+        match="surface vols column count must match the number of surface strikes",
+    ):
+        PricingConfig.model_validate(invalid)
+
+
+def test_rejects_market_curve_time_beyond_maturity() -> None:
+    invalid = _valid_config()
+    invalid["market"] = {
+        "risk_free_curve": {
+            "kind": "zero_curve",
+            "times": [0.25, 1.2],
+            "rates": [0.03, 0.035],
+        }
+    }
+
+    with pytest.raises(
+        ValidationError,
+        match="market.risk_free_curve.times must be <= instrument.maturity",
+    ):
+        PricingConfig.model_validate(invalid)

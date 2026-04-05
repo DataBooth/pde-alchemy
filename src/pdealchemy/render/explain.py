@@ -23,9 +23,10 @@ def _format_parameters(config_data: PricingConfig) -> str:
     if not config_data.process.parameters:
         return "(none)"
     return ", ".join(
-        f"{name}={value:g}"
-        for name, value in sorted(config_data.process.parameters.items())
+        f"{name}={value:g}" for name, value in sorted(config_data.process.parameters.items())
     )
+
+
 def _feature_lines(config_data: PricingConfig) -> tuple[str, str, str]:
     """Return text, markdown, and latex feature summaries."""
     if config_data.features is None:
@@ -37,10 +38,7 @@ def _feature_lines(config_data: PricingConfig) -> tuple[str, str, str]:
 
     if config_data.features.barrier is not None:
         barrier = config_data.features.barrier
-        text_line = (
-            f"Barrier {barrier.type} at level {barrier.level:g}"
-            f", rebate {barrier.rebate:g}"
-        )
+        text_line = f"Barrier {barrier.type} at level {barrier.level:g}, rebate {barrier.rebate:g}"
         lines_text.append(text_line)
         lines_markdown.append(f"- `{text_line}`")
         lines_latex.append(
@@ -61,8 +59,7 @@ def _feature_lines(config_data: PricingConfig) -> tuple[str, str, str]:
         events = config_data.features.dividends.events
         if events:
             rendered_events = ", ".join(
-                f"(t={event.time:g}, amount={event.amount:g})"
-                for event in events
+                f"(t={event.time:g}, amount={event.amount:g})" for event in events
             )
             text_line = f"Discrete dividends {rendered_events}"
         else:
@@ -158,12 +155,10 @@ def _render_text(config_data: PricingConfig, symbolic_problem: SymbolicPricingPr
     state_variables = ", ".join(symbolic_problem.state_variables)
     features_text, _, _ = _feature_lines(config_data)
     sde_lines = "\n".join(
-        _text_sde_line(symbolic_problem, variable)
-        for variable in symbolic_problem.state_variables
+        _text_sde_line(symbolic_problem, variable) for variable in symbolic_problem.state_variables
     )
     grid_lines = "\n".join(
-        _text_grid_line(config_data, variable)
-        for variable in symbolic_problem.state_variables
+        _text_grid_line(config_data, variable) for variable in symbolic_problem.state_variables
     )
 
     return (
@@ -193,17 +188,11 @@ def _render_markdown(config_data: PricingConfig, symbolic_problem: SymbolicPrici
     state_variables = ", ".join(symbolic_problem.state_variables)
     _, features_markdown, _ = _feature_lines(config_data)
     drift_summary = "; ".join(
-        (
-            f"{variable}: "
-            f"{_text_expression(symbolic_problem.drift[variable].sympy_expression)}"
-        )
+        (f"{variable}: {_text_expression(symbolic_problem.drift[variable].sympy_expression)}")
         for variable in symbolic_problem.state_variables
     )
     diffusion_summary = "; ".join(
-        (
-            f"{variable}: "
-            f"{_text_expression(symbolic_problem.diffusion[variable].sympy_expression)}"
-        )
+        (f"{variable}: {_text_expression(symbolic_problem.diffusion[variable].sympy_expression)}")
         for variable in symbolic_problem.state_variables
     )
     sde_lines = "\n".join(
@@ -211,8 +200,7 @@ def _render_markdown(config_data: PricingConfig, symbolic_problem: SymbolicPrici
         for variable in symbolic_problem.state_variables
     )
     grid_lines = "\n".join(
-        _markdown_grid_line(config_data, variable)
-        for variable in symbolic_problem.state_variables
+        _markdown_grid_line(config_data, variable) for variable in symbolic_problem.state_variables
     )
 
     return (
@@ -245,15 +233,13 @@ def _render_markdown(config_data: PricingConfig, symbolic_problem: SymbolicPrici
 def _render_latex(config_data: PricingConfig, symbolic_problem: SymbolicPricingProblem) -> str:
     _, _, features_latex = _feature_lines(config_data)
     sde_lines = "\n".join(
-        _latex_sde_line(symbolic_problem, variable)
-        for variable in symbolic_problem.state_variables
+        _latex_sde_line(symbolic_problem, variable) for variable in symbolic_problem.state_variables
     )
     payoff_latex = _latex_expression(symbolic_problem.payoff.sympy_expression)
     state_variables = ", ".join(symbolic_problem.state_variables)
 
     grid_lines = " \\\\ ".join(
-        _latex_grid_line(config_data, variable)
-        for variable in symbolic_problem.state_variables
+        _latex_grid_line(config_data, variable) for variable in symbolic_problem.state_variables
     )
 
     return (

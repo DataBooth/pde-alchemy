@@ -40,6 +40,7 @@ def _valid_config() -> PricingConfig:
         }
     )
 
+
 def _exotic_config() -> PricingConfig:
     config_data = _valid_config().model_dump()
     config_data["instrument"]["kind"] = "exotic_option"
@@ -67,12 +68,15 @@ def _exotic_config() -> PricingConfig:
     }
     return PricingConfig.model_validate(config_data)
 
+
 def test_price_config_quantlib_returns_plausible_value() -> None:
     result = price_config(_valid_config())
 
     assert result.backend == "quantlib"
     assert result.engine == "FdBlackScholesVanillaEngine"
     assert result.price == pytest.approx(10.45, abs=1.0)
+
+
 def test_price_config_exotic_combo_routes_to_monte_carlo() -> None:
     result = price_config(_exotic_config())
 
@@ -95,3 +99,48 @@ def test_price_config_requires_spot_parameter() -> None:
 
     with pytest.raises(PricingError, match="Missing spot level"):
         price_config(config_data)
+
+
+def test_price_config_vanilla_accepts_market_curve_and_surface() -> None:
+    config_data = _valid_config().model_dump()
+    config_data["market"] = {
+        "risk_free_curve": {
+            "kind": "zero_curve",
+            "times": [0.25, 1.0],
+            "rates": [0.03, 0.035],
+        },
+        "dividend_curve": {
+            "kind": "flat",
+            "rate": 0.01,
+        },
+        "volatility": {
+            "kind": "surface",
+            "times": [0.25, 1.0],
+            "strikes": [90.0, 100.0, 110.0],
+            "vols": [
+                [0.24, 0.22, 0.21],
+                [0.25, 0.23, 0.22],
+            ],
+        },
+    }
+    result = price_config(PricingConfig.model_validate(config_data))
+
+    assert result.backend == "quantlib"
+    assert result.engine == "FdBlackScholesVanillaEngine"
+    assert result.price > 0.0
+    assert result.metadata["rate_curve"] == "zero_curve"
+    assert result.metadata["volatility_structure"] == "surface"
+
+
+def test_price_config_exotic_rejects_non_flat_market_curve() -> None:
+    config_data = _exotic_config().model_dump()
+    config_data["market"] = {
+        "risk_free_curve": {
+            "kind": "zero_curve",
+            "times": [0.25, 1.0],
+            "rates": [0.03, 0.035],
+        }
+    }
+
+    with pytest.raises(PricingError, match="supports flat market curves only"):
+        price_config(PricingConfig.model_validate(config_data))

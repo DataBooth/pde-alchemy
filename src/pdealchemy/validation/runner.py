@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pdealchemy.config.models import PricingConfig
+from pdealchemy.config.models import (
+    ConstantVolatilityConfig,
+    FlatRateCurveConfig,
+    PricingConfig,
+)
 from pdealchemy.core import price_config
 from pdealchemy.exceptions import ValidationError
 from pdealchemy.validation.analytical import black_scholes_price
@@ -63,22 +67,48 @@ class ValidationRunner:
         spot = parameters.get("S0", parameters.get("spot"))
         strike = parameters.get("K", parameters.get("strike"))
         if spot is None or strike is None:
-            raise ValidationError(
-                "Analytical benchmark requires S0 (or spot) and K (or strike)."
-            )
+            raise ValidationError("Analytical benchmark requires S0 (or spot) and K (or strike).")
         if "r" not in parameters or "sigma" not in parameters:
             raise ValidationError(
                 "Analytical benchmark requires r and sigma in process.parameters."
             )
+        risk_free_rate = parameters["r"]
+        volatility = parameters["sigma"]
+        dividend_yield = parameters.get("q", 0.0)
+
+        if config_data.market is not None:
+            risk_free_curve = config_data.market.risk_free_curve
+            if risk_free_curve is not None:
+                if not isinstance(risk_free_curve, FlatRateCurveConfig):
+                    raise ValidationError(
+                        "Analytical benchmark requires a flat market.risk_free_curve."
+                    )
+                risk_free_rate = risk_free_curve.rate
+
+            dividend_curve = config_data.market.dividend_curve
+            if dividend_curve is not None:
+                if not isinstance(dividend_curve, FlatRateCurveConfig):
+                    raise ValidationError(
+                        "Analytical benchmark requires a flat market.dividend_curve."
+                    )
+                dividend_yield = dividend_curve.rate
+
+            volatility_structure = config_data.market.volatility
+            if volatility_structure is not None:
+                if not isinstance(volatility_structure, ConstantVolatilityConfig):
+                    raise ValidationError(
+                        "Analytical benchmark requires constant market.volatility."
+                    )
+                volatility = volatility_structure.vol
 
         model_result = price_config(config_data)
         benchmark_price = black_scholes_price(
             spot=spot,
             strike=strike,
             maturity=config_data.instrument.maturity,
-            risk_free_rate=parameters["r"],
-            volatility=parameters["sigma"],
-            dividend_yield=parameters.get("q", 0.0),
+            risk_free_rate=risk_free_rate,
+            volatility=volatility,
+            dividend_yield=dividend_yield,
             option_style=style,
         )
         absolute_error = abs(model_result.price - benchmark_price)

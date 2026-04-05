@@ -32,9 +32,14 @@ def _validate_mapping_keys(
         message_parts.append(f"unexpected keys: {', '.join(extras)}")
 
     detail = "; ".join(message_parts)
-    raise ValueError(
-        f"{mapping_name} keys must match process.state_variables ({detail})."
-    )
+    raise ValueError(f"{mapping_name} keys must match process.state_variables ({detail}).")
+
+
+def _validate_strictly_increasing(values_name: str, values: list[float]) -> None:
+    """Ensure a sequence is strictly increasing."""
+    for previous, current in zip(values, values[1:], strict=False):
+        if current <= previous:
+            raise ValueError(f"{values_name} must be strictly increasing.")
 
 
 class MetadataConfig(BaseModel):
@@ -97,6 +102,7 @@ class GridConfig(BaseModel):
     lower: dict[Identifier, float] = Field(min_length=1)
     upper: dict[Identifier, float] = Field(min_length=1)
     points: dict[Identifier, GridPoints] = Field(min_length=1)
+
 
 class MonteCarloConfig(BaseModel):
     """Monte Carlo controls for path-dependent pricing routes."""
@@ -178,6 +184,112 @@ class FeaturesConfig(BaseModel):
     dividends: DividendsConfig | None = None
 
 
+class FlatRateCurveConfig(BaseModel):
+    """Flat continuously compounded rate curve."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["flat"] = "flat"
+    rate: float
+
+
+class ZeroRateCurveConfig(BaseModel):
+    """Node-based zero-rate curve by time to maturity."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["zero_curve"] = "zero_curve"
+    times: list[PositiveFloat] = Field(min_length=1)
+    rates: list[float] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_curve_nodes(self) -> ZeroRateCurveConfig:
+        """Ensure curve nodes are aligned and ordered."""
+        if len(self.times) != len(self.rates):
+            raise ValueError("zero_curve times and rates must have the same length.")
+        _validate_strictly_increasing("zero_curve times", self.times)
+        return self
+
+
+RateCurveConfig = Annotated[
+    FlatRateCurveConfig | ZeroRateCurveConfig,
+    Field(discriminator="kind"),
+]
+
+
+class ConstantVolatilityConfig(BaseModel):
+    """Constant Black volatility input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["constant"] = "constant"
+    vol: PositiveFloat
+
+
+class TermVolatilityCurveConfig(BaseModel):
+    """Node-based Black volatility term curve."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["term_curve"] = "term_curve"
+    times: list[PositiveFloat] = Field(min_length=1)
+    vols: list[PositiveFloat] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_term_curve_nodes(self) -> TermVolatilityCurveConfig:
+        """Ensure term-curve nodes are aligned and ordered."""
+        if len(self.times) != len(self.vols):
+            raise ValueError("term_curve times and vols must have the same length.")
+        _validate_strictly_increasing("term_curve times", self.times)
+        return self
+
+
+class SurfaceVolatilityConfig(BaseModel):
+    """Black volatility surface indexed by expiry and strike."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["surface"] = "surface"
+    times: list[PositiveFloat] = Field(min_length=1)
+    strikes: list[PositiveFloat] = Field(min_length=1)
+    vols: list[list[PositiveFloat]] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_surface_shape(self) -> SurfaceVolatilityConfig:
+        """Ensure surface axes and matrix shape are valid."""
+        _validate_strictly_increasing("surface times", self.times)
+        _validate_strictly_increasing("surface strikes", self.strikes)
+
+        expected_rows = len(self.times)
+        expected_columns = len(self.strikes)
+        if len(self.vols) != expected_rows:
+            raise ValueError("surface vols row count must match the number of surface times.")
+        for row_index, row in enumerate(self.vols):
+            if len(row) != expected_columns:
+                raise ValueError(
+                    "surface vols column count must match the number of surface strikes "
+                    f"(row {row_index})."
+                )
+
+        return self
+
+
+VolatilityConfig = Annotated[
+    ConstantVolatilityConfig | TermVolatilityCurveConfig | SurfaceVolatilityConfig,
+    Field(discriminator="kind"),
+]
+
+
+class MarketConfig(BaseModel):
+    """Optional market curves and volatility inputs for pricing adapters."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    risk_free_curve: RateCurveConfig | None = None
+    dividend_curve: RateCurveConfig | None = None
+    volatility: VolatilityConfig | None = None
+
+
 class PricingConfig(BaseModel):
     """Top-level pricing problem configuration."""
 
@@ -188,6 +300,7 @@ class PricingConfig(BaseModel):
     instrument: InstrumentConfig
     numerics: NumericsConfig
     features: FeaturesConfig | None = None
+    market: MarketConfig | None = None
 
     @model_validator(mode="after")
     def validate_cross_section_consistency(self) -> PricingConfig:
@@ -214,16 +327,39 @@ class PricingConfig(BaseModel):
             if self.features.asian is not None:
                 for observation_time in self.features.asian.observation_times:
                     if observation_time > maturity:
-                        raise ValueError(
-                            "asian.observation_times must be <= instrument.maturity."
-                        )
+                        raise ValueError("asian.observation_times must be <= instrument.maturity.")
 
             if self.features.dividends is not None:
                 for event in self.features.dividends.events:
                     if event.time > maturity:
+                        raise ValueError("dividends.events.time must be <= instrument.maturity.")
+
+        if self.market is not None:
+            maturity = self.instrument.maturity
+
+            if isinstance(self.market.risk_free_curve, ZeroRateCurveConfig):
+                for time_value in self.market.risk_free_curve.times:
+                    if time_value > maturity:
                         raise ValueError(
-                            "dividends.events.time must be <= instrument.maturity."
+                            "market.risk_free_curve.times must be <= instrument.maturity."
                         )
+
+            if isinstance(self.market.dividend_curve, ZeroRateCurveConfig):
+                for time_value in self.market.dividend_curve.times:
+                    if time_value > maturity:
+                        raise ValueError(
+                            "market.dividend_curve.times must be <= instrument.maturity."
+                        )
+
+            if isinstance(self.market.volatility, TermVolatilityCurveConfig):
+                for time_value in self.market.volatility.times:
+                    if time_value > maturity:
+                        raise ValueError("market.volatility.times must be <= instrument.maturity.")
+
+            if isinstance(self.market.volatility, SurfaceVolatilityConfig):
+                for time_value in self.market.volatility.times:
+                    if time_value > maturity:
+                        raise ValueError("market.volatility.times must be <= instrument.maturity.")
 
         return self
 
