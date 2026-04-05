@@ -26,3 +26,20 @@ uv run pdealchemy explain path/to/config.toml --format markdown
 uv run pdealchemy validate path/to/config.toml --analytical --tolerance 0.75
 uv run pdealchemy price path/to/config.toml
 ```
+
+## marimo Notebook Explorer
+An interactive marimo notebook example is available at `examples/notebooks/price_explorer.py`.
+
+Launch it with either command:
+```bash
+just notebook
+```
+
+```bash
+uv run marimo edit examples/notebooks/price_explorer.py
+```
+
+Run it in app mode:
+```bash
+just notebook-run
+```

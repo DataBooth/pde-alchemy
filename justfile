@@ -19,3 +19,9 @@ check:
 
 run *args:
     uv run pdealchemy {{args}}
+
+notebook file="examples/notebooks/price_explorer.py":
+    uv run marimo edit {{file}}
+
+notebook-run file="examples/notebooks/price_explorer.py":
+    uv run marimo run {{file}}
