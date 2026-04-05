@@ -27,6 +27,13 @@ uv run pdealchemy validate path/to/config.toml --analytical --tolerance 0.75
 uv run pdealchemy price path/to/config.toml
 ```
 
+Convenience `just` recipes for the main workflows:
+```bash
+just price
+just validate
+just explain
+```
+
 ## marimo Notebook Explorer
 An interactive marimo notebook example is available at `examples/notebooks/price_explorer.py`.
 
@@ -43,3 +50,10 @@ Run it in app mode:
 ```bash
 just notebook-run
 ```
+
+Quick notebook static check:
+```bash
+just notebook-check
+```
+
+`just notebook-run` starts a server and keeps running until interrupted. Exiting with Ctrl-C returns code `130`, which is expected behaviour.
