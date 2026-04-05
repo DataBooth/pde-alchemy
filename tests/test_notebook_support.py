@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from pdealchemy.exceptions import PricingError
 from pdealchemy.notebook_support import (
     canonical_example_paths,
     load_canonical_example,
@@ -50,3 +53,38 @@ def test_prepare_outputs_for_exotic_with_adjusted_paths() -> None:
 
     assert outputs.pricing_result.price > 0.0
     assert outputs.pricing_result.engine == "MonteCarloDiscreteAsianBarrierDividendEngine"
+
+
+def test_prepare_outputs_for_vanilla_dual_backend_with_greeks_and_spot_sweep() -> None:
+    config_data = load_canonical_example("vanilla", repo_root=_repo_root())
+    outputs = prepare_notebook_outputs(
+        config_data,
+        backends=("quantlib", "py_pde"),
+        include_greeks=True,
+        include_spot_sweep=True,
+        spot_sweep_points=5,
+    )
+
+    assert set(outputs.pricing_by_backend) == {"quantlib", "py_pde"}
+    quantlib_price = outputs.pricing_by_backend["quantlib"].price
+    py_pde_price = outputs.pricing_by_backend["py_pde"].price
+    assert quantlib_price > 0.0
+    assert py_pde_price > 0.0
+    assert abs(quantlib_price - py_pde_price) < 1.0
+
+    assert set(outputs.greeks_by_backend) == {"quantlib", "py_pde"}
+    for backend_name in ("quantlib", "py_pde"):
+        greek_values = outputs.greeks_by_backend[backend_name]
+        assert set(greek_values) == {"delta", "gamma", "vega", "rho", "theta"}
+
+    assert "spot" in outputs.spot_sweep
+    assert len(outputs.spot_sweep["spot"]) == 5
+    assert len(outputs.spot_sweep["quantlib:price"]) == 5
+    assert len(outputs.spot_sweep["py_pde:price"]) == 5
+
+
+def test_prepare_outputs_rejects_py_pde_for_exotic() -> None:
+    config_data = load_canonical_example("exotic", repo_root=_repo_root())
+
+    with pytest.raises(PricingError, match="supports vanilla routes only"):
+        prepare_notebook_outputs(config_data, backends=("py_pde",))

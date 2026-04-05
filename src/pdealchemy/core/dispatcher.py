@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pdealchemy.config.models import PricingConfig
+from pdealchemy.core.adapters.py_pde import price_with_py_pde
 from pdealchemy.core.adapters.quantlib import price_with_quantlib
 from pdealchemy.core.models import PricingResult
 from pdealchemy.exceptions import PricingError
@@ -16,10 +17,7 @@ def price_config(config_data: PricingConfig) -> PricingResult:
     if config_data.numerics.backend == "quantlib":
         return price_with_quantlib(config_data)
     if config_data.numerics.backend == "py_pde":
-        raise PricingError(
-            "py_pde pricing backend is not implemented yet.",
-            suggestion="Use `quantlib` for now or wait for py_pde adapter support.",
-        )
+        return price_with_py_pde(config_data)
 
     raise PricingError(
         "Unsupported pricing backend.",

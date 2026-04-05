@@ -85,11 +85,23 @@ def test_price_config_exotic_combo_routes_to_monte_carlo() -> None:
     assert result.price > 0.0
 
 
-def test_price_config_rejects_unimplemented_backend() -> None:
+def test_price_config_py_pde_returns_plausible_value() -> None:
     config_data = _valid_config()
     config_data.numerics.backend = "py_pde"
+    config_data.numerics.time_steps = 150
+    config_data.numerics.grid.points["S"] = 241
 
-    with pytest.raises(PricingError, match="not implemented"):
+    result = price_config(config_data)
+    assert result.backend == "py_pde"
+    assert result.engine == "CrankNicolsonBlackScholes1D"
+    assert result.price == pytest.approx(10.45, abs=1.0)
+
+
+def test_price_config_py_pde_rejects_exotic_features() -> None:
+    config_data = _exotic_config()
+    config_data.numerics.backend = "py_pde"
+
+    with pytest.raises(PricingError, match="supports vanilla routes only"):
         price_config(config_data)
 
 
