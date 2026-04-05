@@ -122,6 +122,24 @@ def _(
                 "Use this notebook to compare backend prices, inspect Greeks, "
                 "and visualise spot sensitivity."
             ),
+            mo.md(
+                "### What this workbook does\n"
+                "- Loads a canonical pricing configuration (vanilla or exotic).\n"
+                "- Prices the route with one or more backends.\n"
+                "- Optionally computes Greeks, spot sweeps, and convergence diagnostics."
+            ),
+            mo.md(
+                "### Why this workbook exists\n"
+                "- Gives a fast, visual way to compare numerical behaviour across backends.\n"
+                "- Helps validate price quality versus numerical resolution.\n"
+                "- Supports quick experimentation before locking down production settings."
+            ),
+            mo.md(
+                "### How to use it\n"
+                "1. Start with `fast` or `balanced` runtime profile while iterating.\n"
+                "2. Enable convergence plots to inspect numerical stability and drift.\n"
+                "3. Switch to `accurate` profile for final comparison values."
+            ),
             example,
             compare_backends,
             include_greeks,
@@ -140,14 +158,14 @@ def _(
         convergence_points,
         example,
         example_options,
-        include_greeks,
         include_convergence,
+        include_greeks,
         include_spot_sweep,
         monte_carlo_paths,
         repo_root,
+        run_analytical,
         runtime_profile,
         runtime_profile_options,
-        run_analytical,
         spot_sweep_points,
         tolerance,
     )
@@ -161,10 +179,8 @@ def _(
     compare_backends,
     convergence_points,
     example,
-    example_options,
-    go,
-    include_greeks,
     include_convergence,
+    include_greeks,
     include_spot_sweep,
     load_canonical_example,
     mo,
@@ -172,9 +188,9 @@ def _(
     prepare_notebook_outputs,
     repo_root,
     resolve_canonical_example_selection,
+    run_analytical,
     runtime_profile,
     runtime_profile_options,
-    run_analytical,
     spot_sweep_points,
     tolerance,
     with_monte_carlo_paths,
@@ -194,15 +210,16 @@ def _(
         f"- vanilla: `{examples['vanilla']}`\n"
         f"- exotic: `{examples['exotic']}`"
     )
+    selected_backends = ("quantlib", "py_pde")
+    if selected != "vanilla" or not compare_backends.value:
+        selected_backends = ("quantlib",)
 
+    include_greeks_now = include_greeks.value and selected == "vanilla"
+    include_spot_sweep_now = include_spot_sweep.value and selected == "vanilla"
+    include_convergence_now = include_convergence.value and selected == "vanilla"
+    error_view = None
+    outputs = None
     try:
-        selected_backends = ("quantlib", "py_pde")
-        if selected != "vanilla" or not compare_backends.value:
-            selected_backends = ("quantlib",)
-
-        include_greeks_now = include_greeks.value and selected == "vanilla"
-        include_spot_sweep_now = include_spot_sweep.value and selected == "vanilla"
-        include_convergence_now = include_convergence.value and selected == "vanilla"
         outputs = prepare_notebook_outputs(
             config_data,
             run_analytical=run_analytical.value,
@@ -214,7 +231,36 @@ def _(
             include_convergence=include_convergence_now,
             convergence_points=convergence_points.value,
         )
+    except PDEAlchemyError as error:
+        error_text = (
+            f"**Error:** {error.message}\n\n"
+            f"{error.details or ''}\n\n"
+            f"{error.suggestion or ''}"
+        )
+        error_view = mo.md(error_text)
+    return (
+        error_view,
+        outputs,
+        path_summary,
+        selected,
+        selected_backends,
+        selected_runtime_profile,
+    )
 
+
+@app.cell
+def _(
+    example,
+    example_options,
+    include_convergence,
+    mo,
+    outputs,
+    path_summary,
+    selected,
+    selected_runtime_profile,
+):
+    summary = None
+    if outputs is not None:
         analytical_summary = "not run"
         if outputs.analytical_outcome is not None:
             outcome = outputs.analytical_outcome
@@ -225,11 +271,13 @@ def _(
             )
 
         pricing_rows = [
-            f"| `{backend}` | `{result.price:.8f}` | `{result.engine}` |"
-            for backend, result in outputs.pricing_by_backend.items()
+            f"| `{summary_backend_name}` | `{summary_result.price:.8f}` | `{summary_result.engine}` |"
+            for summary_backend_name, summary_result in outputs.pricing_by_backend.items()
         ]
         if len(outputs.pricing_by_backend) > 1:
-            backend_prices = [result.price for result in outputs.pricing_by_backend.values()]
+            backend_prices = [
+                summary_result.price for summary_result in outputs.pricing_by_backend.values()
+            ]
             spread = max(backend_prices) - min(backend_prices)
             pricing_rows.append(f"| `spread (max-min)` | `{spread:.8f}` | `-` |")
         pricing_summary = "\n".join(
@@ -243,14 +291,14 @@ def _(
         if outputs.greeks_by_backend:
             greek_rows = [
                 (
-                    f"| `{backend}` | "
-                    f"`{greek_values['delta']:.6f}` | "
-                    f"`{greek_values['gamma']:.6f}` | "
-                    f"`{greek_values['vega']:.6f}` | "
-                    f"`{greek_values['rho']:.6f}` | "
-                    f"`{greek_values['theta']:.6f}` |"
+                    f"| `{summary_greek_backend_name}` | "
+                    f"`{summary_greek_values['delta']:.6f}` | "
+                    f"`{summary_greek_values['gamma']:.6f}` | "
+                    f"`{summary_greek_values['vega']:.6f}` | "
+                    f"`{summary_greek_values['rho']:.6f}` | "
+                    f"`{summary_greek_values['theta']:.6f}` |"
                 )
-                for backend, greek_values in outputs.greeks_by_backend.items()
+                for summary_greek_backend_name, summary_greek_values in outputs.greeks_by_backend.items()
             ]
             greek_summary = "\n".join(
                 [
@@ -261,111 +309,6 @@ def _(
             )
         else:
             greek_summary = "- Greeks not requested for this selection."
-
-        price_bar = go.Figure()
-        price_bar.add_bar(
-            x=list(outputs.pricing_by_backend.keys()),
-            y=[result.price for result in outputs.pricing_by_backend.values()],
-            marker_color=["#2E86AB", "#F18F01", "#6A4C93"][
-                : len(outputs.pricing_by_backend)
-            ],
-        )
-        price_bar.update_layout(
-            title="Backend price comparison",
-            xaxis_title="Backend",
-            yaxis_title="Option value",
-            template="plotly_white",
-        )
-
-        sweep_plot = None
-        if "spot" in outputs.spot_sweep:
-            sweep_plot = go.Figure()
-            spot_values = outputs.spot_sweep["spot"]
-            for backend in selected_backends:
-                key = f"{backend}:price"
-                if key in outputs.spot_sweep:
-                    sweep_plot.add_scatter(
-                        x=spot_values,
-                        y=outputs.spot_sweep[key],
-                        mode="lines+markers",
-                        name=backend,
-                    )
-            sweep_plot.update_layout(
-                title="Spot sweep price profile",
-                xaxis_title="Spot",
-                yaxis_title="Option value",
-                template="plotly_white",
-            )
-
-        convergence_price_plot = None
-        convergence_error_plot = None
-        if outputs.convergence_sweep:
-            time_steps = outputs.convergence_sweep["time_steps"]
-            space_steps = outputs.convergence_sweep["space_steps"]
-
-            convergence_price_plot = go.Figure()
-            for backend in selected_backends:
-                key = f"{backend}:price"
-                if key in outputs.convergence_sweep:
-                    convergence_price_plot.add_scatter(
-                        x=time_steps,
-                        y=outputs.convergence_sweep[key],
-                        customdata=space_steps,
-                        mode="lines+markers",
-                        name=backend,
-                        hovertemplate=(
-                            "time steps=%{x:.0f}<br>"
-                            "space steps=%{customdata:.0f}<br>"
-                            "price=%{y:.8f}<extra></extra>"
-                        ),
-                    )
-            convergence_price_plot.update_layout(
-                title="Resolution convergence: price vs time steps",
-                xaxis_title="Time steps",
-                yaxis_title="Option value",
-                template="plotly_white",
-            )
-
-            convergence_error_plot = go.Figure()
-            for backend in selected_backends:
-                key = f"{backend}:abs_error"
-                if key in outputs.convergence_sweep:
-                    convergence_error_plot.add_scatter(
-                        x=time_steps,
-                        y=[max(value, 1e-12) for value in outputs.convergence_sweep[key]],
-                        customdata=space_steps,
-                        mode="lines+markers",
-                        name=f"{backend} abs error",
-                        hovertemplate=(
-                            "time steps=%{x:.0f}<br>"
-                            "space steps=%{customdata:.0f}<br>"
-                            "abs error=%{y:.8e}<extra></extra>"
-                        ),
-                    )
-            if "backend_abs_diff" in outputs.convergence_sweep:
-                convergence_error_plot.add_scatter(
-                    x=time_steps,
-                    y=[
-                        max(value, 1e-12)
-                        for value in outputs.convergence_sweep["backend_abs_diff"]
-                    ],
-                    customdata=space_steps,
-                    mode="lines+markers",
-                    line={"dash": "dash"},
-                    name="backend abs diff",
-                    hovertemplate=(
-                        "time steps=%{x:.0f}<br>"
-                        "space steps=%{customdata:.0f}<br>"
-                        "abs diff=%{y:.8e}<extra></extra>"
-                    ),
-                )
-            convergence_error_plot.update_layout(
-                title="Resolution convergence: error trend",
-                xaxis_title="Time steps",
-                yaxis_title="Absolute error",
-                yaxis_type="log",
-                template="plotly_white",
-            )
 
         notebook_notes = (
             "\n\n### Runtime notes\n"
@@ -400,27 +343,196 @@ def _(
             f"- {analytical_summary}"
             f"{notebook_notes}\n"
         )
-        view_blocks = [summary, price_bar]
-        if sweep_plot is not None:
-            view_blocks.append(sweep_plot)
-        if convergence_price_plot is not None:
-            view_blocks.append(convergence_price_plot)
-        if convergence_error_plot is not None:
-            view_blocks.append(convergence_error_plot)
-        view_blocks.extend(
+    return summary
+
+
+@app.cell
+def _(go, outputs):
+    price_bar = None
+
+    sweep_plot = None
+    if outputs is not None:
+        price_bar = go.Figure()
+        price_bar.add_bar(
+            x=list(outputs.pricing_by_backend.keys()),
+            y=[result.price for result in outputs.pricing_by_backend.values()],
+            marker_color=["#2E86AB", "#F18F01", "#6A4C93"][: len(outputs.pricing_by_backend)],
+        )
+        price_bar.update_layout(
+            title="Backend price comparison",
+            xaxis_title="Backend",
+            yaxis_title="Option value",
+            template="plotly_white",
+        )
+
+        if "spot" in outputs.spot_sweep:
+            sweep_plot = go.Figure()
+            spot_values = outputs.spot_sweep["spot"]
+            for spot_backend_name in outputs.pricing_by_backend:
+                spot_price_key = f"{spot_backend_name}:price"
+                if spot_price_key in outputs.spot_sweep:
+                    sweep_plot.add_scatter(
+                        x=spot_values,
+                        y=outputs.spot_sweep[spot_price_key],
+                        mode="lines+markers",
+                        name=spot_backend_name,
+                    )
+            sweep_plot.update_layout(
+                title="Spot sweep price profile",
+                xaxis_title="Spot",
+                yaxis_title="Option value",
+                template="plotly_white",
+            )
+
+    return price_bar, sweep_plot
+
+
+@app.cell
+def _(go, outputs):
+    convergence_time_plot = None
+
+    convergence_mesh_plot = None
+    convergence_error_plot = None
+    if outputs is not None and outputs.convergence_sweep:
+        time_steps = outputs.convergence_sweep["time_steps"]
+        space_steps = outputs.convergence_sweep["space_steps"]
+        mesh_size = outputs.convergence_sweep.get("mesh_size", [])
+
+        convergence_time_plot = go.Figure()
+        for conv_time_backend_name in outputs.pricing_by_backend:
+            conv_time_price_key = f"{conv_time_backend_name}:price"
+            if conv_time_price_key in outputs.convergence_sweep:
+                convergence_time_plot.add_scatter(
+                    x=time_steps,
+                    y=outputs.convergence_sweep[conv_time_price_key],
+                    customdata=space_steps,
+                    mode="lines+markers",
+                    name=conv_time_backend_name,
+                    hovertemplate=(
+                        "time steps=%{x:.0f}<br>"
+                        "space steps=%{customdata:.0f}<br>"
+                        "price=%{y:.8f}<extra></extra>"
+                    ),
+                )
+        convergence_time_plot.update_layout(
+            title="Resolution convergence: price vs time steps",
+            xaxis_title="Time steps",
+            yaxis_title="Option value",
+            template="plotly_white",
+        )
+
+        if mesh_size:
+            mesh_customdata = [
+                [time_step, space_step]
+                for time_step, space_step in zip(time_steps, space_steps, strict=False)
+            ]
+            convergence_mesh_plot = go.Figure()
+            for conv_mesh_backend_name in outputs.pricing_by_backend:
+                conv_mesh_price_key = f"{conv_mesh_backend_name}:price"
+                if conv_mesh_price_key in outputs.convergence_sweep:
+                    convergence_mesh_plot.add_scatter(
+                        x=mesh_size,
+                        y=outputs.convergence_sweep[conv_mesh_price_key],
+                        customdata=mesh_customdata,
+                        mode="lines+markers",
+                        name=conv_mesh_backend_name,
+                        hovertemplate=(
+                            "mesh size ΔS=%{x:.6f}<br>"
+                            "time steps=%{customdata[0]:.0f}<br>"
+                            "space steps=%{customdata[1]:.0f}<br>"
+                            "price=%{y:.8f}<extra></extra>"
+                        ),
+                    )
+            convergence_mesh_plot.update_layout(
+                title="Resolution convergence: price vs mesh size",
+                xaxis_title="Mesh size (ΔS)",
+                yaxis_title="Option value",
+                template="plotly_white",
+            )
+
+        convergence_error_plot = go.Figure()
+        for conv_error_backend_name in outputs.pricing_by_backend:
+            conv_error_key = f"{conv_error_backend_name}:abs_error"
+            if conv_error_key in outputs.convergence_sweep:
+                convergence_error_plot.add_scatter(
+                    x=time_steps,
+                    y=[max(value, 1e-12) for value in outputs.convergence_sweep[conv_error_key]],
+                    customdata=space_steps,
+                    mode="lines+markers",
+                    name=f"{conv_error_backend_name} abs error",
+                    hovertemplate=(
+                        "time steps=%{x:.0f}<br>"
+                        "space steps=%{customdata:.0f}<br>"
+                        "abs error=%{y:.8e}<extra></extra>"
+                    ),
+                )
+        if "backend_abs_diff" in outputs.convergence_sweep:
+            convergence_error_plot.add_scatter(
+                x=time_steps,
+                y=[max(value, 1e-12) for value in outputs.convergence_sweep["backend_abs_diff"]],
+                customdata=space_steps,
+                mode="lines+markers",
+                line={"dash": "dash"},
+                name="backend abs diff",
+                hovertemplate=(
+                    "time steps=%{x:.0f}<br>"
+                    "space steps=%{customdata:.0f}<br>"
+                    "abs diff=%{y:.8e}<extra></extra>"
+                ),
+            )
+        convergence_error_plot.update_layout(
+            title="Resolution convergence: error trend",
+            xaxis_title="Time steps",
+            yaxis_title="Absolute error",
+            yaxis_type="log",
+            template="plotly_white",
+        )
+
+    return convergence_time_plot, convergence_mesh_plot, convergence_error_plot
+
+
+@app.cell
+def _(mo, outputs):
+    explain_view = None
+    if outputs is not None:
+        explain_view = mo.vstack(
             [
                 mo.md("### Explain output"),
                 mo.md(outputs.explain_markdown),
             ]
         )
-        view = mo.vstack(view_blocks)
-    except PDEAlchemyError as error:
-        error_text = (
-            f"**Error:** {error.message}\n\n"
-            f"{error.details or ''}\n\n"
-            f"{error.suggestion or ''}"
-        )
-        view = mo.md(error_text)
+    return explain_view
+
+
+@app.cell
+def _(
+    convergence_error_plot,
+    convergence_mesh_plot,
+    convergence_time_plot,
+    error_view,
+    explain_view,
+    mo,
+    price_bar,
+    summary,
+    sweep_plot,
+):
+    if error_view is not None:
+        view = error_view
+    else:
+        view_blocks = []
+        if summary is not None:
+            view_blocks.append(summary)
+        for block in (
+            price_bar,
+            sweep_plot,
+            convergence_time_plot,
+            convergence_mesh_plot,
+            convergence_error_plot,
+            explain_view,
+        ):
+            if block is not None:
+                view_blocks.append(block)
+        view = mo.vstack(view_blocks) if view_blocks else mo.md("")
     view
     return
 

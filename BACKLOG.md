@@ -1,11 +1,8 @@
 # Backlog
 ## Current outstanding items
-- Complete the config-driven notebook selection refactor in `src/pdealchemy/notebook_support.py` and `examples/notebooks/price_explorer.py`.
-- Finalise tests for the selection helpers (dropdown option generation and selection resolution) alongside the notebook export smoke test.
-- Fix py-pde boundary condition wiring to remove deprecation warnings, e.g. `DeprecationWarning: Deprecated format for boundary conditions. Boundary conditions for each axis are set using a dictionary: {"x": bc_x, "y-": bc_y_lower, "y+": bc_y_upper}.`
-- Re-run the full validation suite (`just notebook-check` and `just check`) to confirm all checks pass without interruption.
-- Commit the hotfix branch changes, push to origin, and open a focused pull request for review.
 - Profile notebook runtime and backend pricing performance (cell-level timing + backend call timing), then prioritise optimisations for long-running interactive calculations.
+- Add a lightweight timing summary to notebook output (per-run backend timings) once profiling identifies stable instrumentation points.
+- Follow up on full-text access for DOI `10.1016/j.camwa.2025.04.003` and update paper-derived backlog items with concrete numerical method details.
 
 ## Ideas from reviewing BlackScholesPINN
 - Add an experimental PINN backend (research track) for 1D vanilla Black-Scholes as an optional solver path, clearly marked non-production.

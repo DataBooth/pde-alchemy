@@ -116,10 +116,15 @@ def test_prepare_outputs_for_vanilla_dual_backend_with_greeks_and_spot_sweep() -
 
     assert "time_steps" in outputs.convergence_sweep
     assert "space_steps" in outputs.convergence_sweep
+    assert "mesh_size" in outputs.convergence_sweep
     assert len(outputs.convergence_sweep["time_steps"]) >= 3
     assert len(outputs.convergence_sweep["space_steps"]) == len(
         outputs.convergence_sweep["time_steps"]
     )
+    assert len(outputs.convergence_sweep["mesh_size"]) == len(
+        outputs.convergence_sweep["time_steps"]
+    )
+    assert all(mesh_size > 0.0 for mesh_size in outputs.convergence_sweep["mesh_size"])
     assert len(outputs.convergence_sweep["quantlib:price"]) == len(
         outputs.convergence_sweep["time_steps"]
     )

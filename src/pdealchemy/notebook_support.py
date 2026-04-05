@@ -252,10 +252,20 @@ def _convergence_sweep(
     points: int,
 ) -> dict[str, list[float]]:
     schedule = _convergence_schedule(config_data, points=points)
+    time_steps_values = [float(time_steps) for time_steps, _ in schedule]
+    space_steps_values = [float(space_steps) for _, space_steps in schedule]
     sweep: dict[str, list[float]] = {
-        "time_steps": [float(time_steps) for time_steps, _ in schedule],
-        "space_steps": [float(space_steps) for _, space_steps in schedule],
+        "time_steps": time_steps_values,
+        "space_steps": space_steps_values,
     }
+    if "S" in config_data.numerics.grid.lower and "S" in config_data.numerics.grid.upper:
+        lower_bound = config_data.numerics.grid.lower["S"]
+        upper_bound = config_data.numerics.grid.upper["S"]
+        domain_width = max(upper_bound - lower_bound, 1e-12)
+        sweep["mesh_size"] = [
+            domain_width / max(space_steps - 1.0, 1.0)
+            for space_steps in space_steps_values
+        ]
     for backend in backends:
         prices = [
             _price_with_backend(
