@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from pdealchemy.config.loader import load_pricing_config
 from pdealchemy.config.models import ConstantVolatilityConfig, FlatRateCurveConfig, PricingConfig
@@ -15,6 +15,8 @@ from pdealchemy.validation import ValidationOutcome, ValidationRunner
 
 ExampleName = Literal["vanilla", "exotic"]
 BackendName = Literal["quantlib", "py_pde"]
+InteractiveProfile = Literal["accurate", "balanced", "fast"]
+_CANONICAL_EXAMPLE_ORDER: tuple[ExampleName, ...] = ("vanilla", "exotic")
 
 _DEFAULT_GREEK_SPOT_BUMP_RELATIVE = 0.01
 _DEFAULT_GREEK_RATE_BUMP_ABSOLUTE = 1e-4
@@ -31,6 +33,7 @@ class NotebookOutputs:
     analytical_outcome: ValidationOutcome | None = None
     greeks_by_backend: dict[str, dict[str, float]] = field(default_factory=dict)
     spot_sweep: dict[str, list[float]] = field(default_factory=dict)
+    convergence_sweep: dict[str, list[float]] = field(default_factory=dict)
 
 
 def _config_with_backend(config_data: PricingConfig, backend: BackendName) -> PricingConfig:
@@ -47,6 +50,28 @@ def _config_with_faster_numerics(config_data: PricingConfig) -> PricingConfig:
         config_copy.numerics.grid.points["S"] = min(config_copy.numerics.grid.points["S"], 241)
     return config_copy
 
+def apply_interactive_profile(
+    config_data: PricingConfig,
+    profile: InteractiveProfile,
+) -> PricingConfig:
+    """Apply an interactive runtime profile to a pricing config."""
+    config_copy = config_data.model_copy(deep=True)
+    if profile == "accurate":
+        return config_copy
+    if profile == "balanced":
+        config_copy.numerics.time_steps = min(config_copy.numerics.time_steps, 220)
+        if "S" in config_copy.numerics.grid.points:
+            config_copy.numerics.grid.points["S"] = min(config_copy.numerics.grid.points["S"], 301)
+        config_copy.numerics.monte_carlo.paths = min(config_copy.numerics.monte_carlo.paths, 12_000)
+        return config_copy
+    if profile == "fast":
+        config_copy.numerics.time_steps = min(config_copy.numerics.time_steps, 140)
+        if "S" in config_copy.numerics.grid.points:
+            config_copy.numerics.grid.points["S"] = min(config_copy.numerics.grid.points["S"], 201)
+        config_copy.numerics.monte_carlo.paths = min(config_copy.numerics.monte_carlo.paths, 6_000)
+        return config_copy
+    raise ValueError(f"Unsupported interactive profile: {profile}")
+
 
 def _spot_parameter_name(config_data: PricingConfig) -> str:
     parameters = config_data.process.parameters
@@ -61,6 +86,22 @@ def _config_with_spot(config_data: PricingConfig, spot_value: float) -> PricingC
     config_copy = config_data.model_copy(deep=True)
     parameter_name = _spot_parameter_name(config_copy)
     config_copy.process.parameters[parameter_name] = spot_value
+    return config_copy
+
+
+def _config_with_resolution(
+    config_data: PricingConfig,
+    *,
+    time_steps: int,
+    space_steps: int,
+) -> PricingConfig:
+    config_copy = config_data.model_copy(deep=True)
+    config_copy.numerics.time_steps = max(time_steps, 3)
+    if "S" in config_copy.numerics.grid.points:
+        adjusted_space_steps = max(space_steps, 3)
+        if adjusted_space_steps % 2 == 0:
+            adjusted_space_steps += 1
+        config_copy.numerics.grid.points["S"] = adjusted_space_steps
     return config_copy
 
 
@@ -171,6 +212,89 @@ def _spot_sweep(
     return spot_values, prices
 
 
+def _convergence_schedule(config_data: PricingConfig, *, points: int) -> list[tuple[int, int]]:
+    if points < 2:
+        raise ValueError("convergence sweep requires at least two points.")
+
+    base_time_steps = config_data.numerics.time_steps
+    base_space_steps = config_data.numerics.grid.points.get("S", 101)
+    lower_factor = 0.45
+    upper_factor = 1.45
+    factors = [
+        lower_factor + (upper_factor - lower_factor) * index / (points - 1)
+        for index in range(points)
+    ]
+
+    schedule: list[tuple[int, int]] = []
+    for factor in factors:
+        time_steps = max(25, int(round(base_time_steps * factor)))
+        space_steps = max(51, int(round(base_space_steps * factor)))
+        if space_steps % 2 == 0:
+            space_steps += 1
+        resolution = (time_steps, space_steps)
+        if resolution not in schedule:
+            schedule.append(resolution)
+
+    if len(schedule) < 2:
+        first_space_steps = max(51, base_space_steps + (1 - base_space_steps % 2))
+        second_space_steps = first_space_steps + 41
+        schedule = [
+            (max(25, base_time_steps), first_space_steps),
+            (max(30, base_time_steps + 40), second_space_steps),
+        ]
+    return schedule
+
+
+def _convergence_sweep(
+    config_data: PricingConfig,
+    *,
+    backends: tuple[BackendName, ...],
+    points: int,
+) -> dict[str, list[float]]:
+    schedule = _convergence_schedule(config_data, points=points)
+    time_steps_values = [float(time_steps) for time_steps, _ in schedule]
+    space_steps_values = [float(space_steps) for _, space_steps in schedule]
+    sweep: dict[str, list[float]] = {
+        "time_steps": time_steps_values,
+        "space_steps": space_steps_values,
+    }
+    if "S" in config_data.numerics.grid.lower and "S" in config_data.numerics.grid.upper:
+        lower_bound = config_data.numerics.grid.lower["S"]
+        upper_bound = config_data.numerics.grid.upper["S"]
+        domain_width = max(upper_bound - lower_bound, 1e-12)
+        sweep["mesh_size"] = [
+            domain_width / max(space_steps - 1.0, 1.0)
+            for space_steps in space_steps_values
+        ]
+    for backend in backends:
+        prices = [
+            _price_with_backend(
+                _config_with_resolution(
+                    config_data,
+                    time_steps=time_steps,
+                    space_steps=space_steps,
+                ),
+                backend,
+            ).price
+            for time_steps, space_steps in schedule
+        ]
+        sweep[f"{backend}:price"] = prices
+        reference_price = prices[-1]
+        sweep[f"{backend}:abs_error"] = [abs(price - reference_price) for price in prices]
+
+    if len(backends) >= 2:
+        left_backend = backends[0]
+        right_backend = backends[1]
+        left_prices = sweep[f"{left_backend}:price"]
+        right_prices = sweep[f"{right_backend}:price"]
+        sweep["backend_abs_diff"] = [
+            abs(left_price - right_price)
+            for left_price, right_price in zip(left_prices, right_prices, strict=False)
+        ]
+
+    return sweep
+
+
 def repository_root_from_notebook(notebook_file: Path) -> Path:
     """Resolve repository root from an examples/notebooks file path."""
     return notebook_file.resolve().parents[2]
@@ -182,6 +306,42 @@ def canonical_example_paths(repo_root: Path) -> dict[ExampleName, Path]:
         "vanilla": repo_root / "examples" / "vanilla_european_call.toml",
         "exotic": repo_root / "examples" / "exotic_discrete_asian_barrier_dividend.toml",
     }
+
+def canonical_example_dropdown_options(repo_root: Path) -> dict[str, ExampleName]:
+    """Return dropdown label-to-id options derived from canonical config metadata."""
+    options: dict[str, ExampleName] = {}
+    for example_name in _CANONICAL_EXAMPLE_ORDER:
+        config_data = load_canonical_example(example_name, repo_root=repo_root)
+        label = (
+            config_data.metadata.name
+            if config_data.metadata is not None and config_data.metadata.name.strip()
+            else example_name
+        )
+        options[label] = example_name
+    return options
+
+
+def default_canonical_example_label(repo_root: Path) -> str:
+    """Return the preferred default dropdown label for canonical examples."""
+    options = canonical_example_dropdown_options(repo_root)
+    for label, example_name in options.items():
+        if example_name == "vanilla":
+            return label
+    return next(iter(options))
+
+
+def resolve_canonical_example_selection(
+    selected_value: str,
+    *,
+    repo_root: Path,
+) -> ExampleName:
+    """Resolve a UI selection that may be either a label or a canonical example id."""
+    options = canonical_example_dropdown_options(repo_root)
+    if selected_value in options:
+        return options[selected_value]
+    if selected_value in options.values():
+        return cast(ExampleName, selected_value)
+    raise ValueError(f"Unsupported example name: {selected_value}")
 
 
 def load_canonical_example(example_name: ExampleName, *, repo_root: Path) -> PricingConfig:
@@ -208,6 +368,8 @@ def prepare_notebook_outputs(
     include_greeks: bool = False,
     include_spot_sweep: bool = False,
     spot_sweep_points: int = 9,
+    include_convergence: bool = False,
+    convergence_points: int = 5,
 ) -> NotebookOutputs:
     """Run explain, price, and optionally analytical validation for notebooks."""
     symbolic_problem = build_symbolic_problem(config_data)
@@ -262,6 +424,14 @@ def prepare_notebook_outputs(
         if spot_values is not None:
             spot_sweep["spot"] = spot_values
 
+    convergence_sweep: dict[str, list[float]] = {}
+    if include_convergence:
+        convergence_sweep = _convergence_sweep(
+            config_data,
+            backends=deduplicated_backends,
+            points=convergence_points,
+        )
+
     return NotebookOutputs(
         pricing_result=pricing_result,
         pricing_by_backend=pricing_by_backend,
@@ -269,4 +439,5 @@ def prepare_notebook_outputs(
         analytical_outcome=analytical_outcome,
         greeks_by_backend=greeks_by_backend,
         spot_sweep=spot_sweep,
+        convergence_sweep=convergence_sweep,
     )

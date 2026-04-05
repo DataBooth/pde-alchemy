@@ -8,6 +8,89 @@ Initial project skeleton is in place, including:
 - `just` task automation
 - CLI scaffold (`price`, `validate`, `explain`)
 - Base logging and error handling modules
+## Solution Overview Diagram
+```mermaid
+flowchart LR
+    User["User"]
+    Config["TOML pricing config"]
+
+    subgraph Interfaces
+        CLI["CLI<br/>price / validate / explain"]
+        Notebook["marimo notebook<br/>price explorer"]
+    end
+
+    subgraph Orchestration
+        Loader["Config loader + schema checks"]
+        Symbolic["Symbolic problem builder"]
+        Dispatcher["Pricing dispatcher"]
+        Validation["Validation runner<br/>(optional analytical checks)"]
+        Explain["Explain renderer<br/>(markdown/text)"]
+    end
+
+    subgraph Backends
+        QuantLib["QuantLib adapter<br/>FD vanilla + MC exotic"]
+        PyPDE["py_pde adapter<br/>1D vanilla PDE"]
+    end
+
+    Outputs["Price + metadata + diagnostics"]
+    UX["CLI output and notebook tables/plots"]
+
+    User --> Config
+    User --> CLI
+    User --> Notebook
+
+    CLI --> Loader
+    Notebook --> Loader
+    Config --> Loader
+
+    Loader --> Symbolic
+    Loader --> Dispatcher
+    Loader --> Validation
+
+    Dispatcher --> QuantLib
+    Dispatcher --> PyPDE
+
+    QuantLib --> Outputs
+    PyPDE --> Outputs
+    Validation --> Outputs
+    Symbolic --> Explain
+
+    Explain --> UX
+    Outputs --> UX
+```
+
+### Pricing Execution Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant CLI as pdealchemy CLI
+    participant L as Config loader
+    participant D as Pricing dispatcher
+    participant Q as QuantLib adapter
+    participant P as py_pde adapter
+    participant V as Validation runner
+
+    U->>CLI: pdealchemy price config.toml
+    CLI->>L: Parse and schema-validate config
+    L-->>CLI: Canonical pricing request
+    CLI->>D: dispatch(request)
+
+    alt backend = quantlib
+        D->>Q: price(request)
+        Q-->>D: price + diagnostics
+    else backend = py_pde
+        D->>P: price(request)
+        P-->>D: price + diagnostics
+    end
+
+    opt validation enabled
+        CLI->>V: Run optional analytical checks
+        V-->>CLI: Validation report
+    end
+
+    D-->>CLI: Result payload
+    CLI-->>U: Formatted price output
+```
 
 ## Quick Start
 ```bash

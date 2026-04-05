@@ -227,13 +227,16 @@ def price_with_py_pde(config_data: PricingConfig) -> PricingResult:
 
     if style == "call":
         payoff_values = [max(strike * math.exp(log_spot) - strike, 0.0) for log_spot in log_spots]
-        boundary_conditions: list[dict[str, float]] = [
-            {"value": 0.0},
-            {"derivative": strike * math.exp(log_upper_bound)},
-        ]
+        boundary_conditions: dict[str, dict[str, float]] = {
+            "x-": {"value": 0.0},
+            "x+": {"derivative": strike * math.exp(log_upper_bound)},
+        }
     else:
         payoff_values = [max(strike - strike * math.exp(log_spot), 0.0) for log_spot in log_spots]
-        boundary_conditions = [{"derivative": 0.0}, {"value": 0.0}]
+        boundary_conditions = {
+            "x-": {"derivative": 0.0},
+            "x+": {"value": 0.0},
+        }
 
     state = pde.ScalarField(grid, payoff_values)
     diffusion = 0.5 * volatility * volatility
