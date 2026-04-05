@@ -40,7 +40,7 @@ def _(mo):
             "Vanilla European call": "vanilla",
             "Exotic discrete Asian + barrier + dividends": "exotic",
         },
-        value="vanilla",
+        value="Vanilla European call",
         label="Example configuration",
     )
     compare_backends = mo.ui.checkbox(
@@ -111,10 +111,10 @@ def _(mo):
 
 @app.cell
 def _(
-    compare_backends,
     PDEAlchemyError,
     Path,
     canonical_example_paths,
+    compare_backends,
     example,
     go,
     include_greeks,
@@ -130,7 +130,12 @@ def _(
     with_monte_carlo_paths,
 ):
     repo_root = repository_root_from_notebook(Path(__file__))
-    selected = example.value
+    selected = {
+        "Vanilla European call": "vanilla",
+        "Exotic discrete Asian + barrier + dividends": "exotic",
+        "vanilla": "vanilla",
+        "exotic": "exotic",
+    }.get(example.value, example.value)
     config_data = load_canonical_example(selected, repo_root=repo_root)
     if selected == "exotic":
         config_data = with_monte_carlo_paths(config_data, monte_carlo_paths.value)
