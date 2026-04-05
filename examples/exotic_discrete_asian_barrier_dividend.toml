@@ -1,0 +1,50 @@
+[metadata]
+name = "Discrete Asian + barrier + dividend call"
+description = "First canonical exotic example with path-dependence and discrete events."
+tags = ["exotic", "asian", "barrier", "dividend"]
+
+[process]
+state_variables = ["S"]
+parameters = { S0 = 100.0, r = 0.03, sigma = 0.25, K = 100.0, q = 0.0 }
+drift = { S = "r * S" }
+diffusion = { S = "sigma * S" }
+
+[instrument]
+kind = "exotic_option"
+payoff = "max(S - K, 0)"
+maturity = 1.0
+exercise = "european"
+style = "call"
+
+[features.barrier]
+type = "up_and_out"
+level = 145.0
+rebate = 0.0
+
+[features.asian]
+averaging = "discrete_arithmetic"
+observation_times = [0.25, 0.5, 0.75, 1.0]
+
+[[features.dividends.events]]
+time = 0.30
+amount = 0.75
+
+[[features.dividends.events]]
+time = 0.65
+amount = 0.75
+
+[numerics]
+backend = "quantlib"
+scheme = "crank_nicolson"
+time_steps = 300
+damping_steps = 0
+
+[numerics.grid]
+lower = { S = 0.0 }
+upper = { S = 400.0 }
+points = { S = 501 }
+
+[numerics.monte_carlo]
+paths = 40000
+seed = 20260405
+antithetic = true
