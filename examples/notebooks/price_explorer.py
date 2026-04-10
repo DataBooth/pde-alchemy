@@ -243,7 +243,6 @@ def _(
         outputs,
         path_summary,
         selected,
-        selected_backends,
         selected_runtime_profile,
     )
 
@@ -343,7 +342,7 @@ def _(
             f"- {analytical_summary}"
             f"{notebook_notes}\n"
         )
-    return summary
+    return (summary,)
 
 
 @app.cell
@@ -383,7 +382,6 @@ def _(go, outputs):
                 yaxis_title="Option value",
                 template="plotly_white",
             )
-
     return price_bar, sweep_plot
 
 
@@ -487,8 +485,7 @@ def _(go, outputs):
             yaxis_type="log",
             template="plotly_white",
         )
-
-    return convergence_time_plot, convergence_mesh_plot, convergence_error_plot
+    return convergence_error_plot, convergence_mesh_plot, convergence_time_plot
 
 
 @app.cell
@@ -501,7 +498,7 @@ def _(mo, outputs):
                 mo.md(outputs.explain_markdown),
             ]
         )
-    return explain_view
+    return (explain_view,)
 
 
 @app.cell
