@@ -16,8 +16,9 @@ from pdealchemy.core import price_config
 from pdealchemy.exceptions import PDEAlchemyError, ValidationError
 from pdealchemy.logging_config import configure_logging
 from pdealchemy.math_bridge import build_symbolic_problem
+from pdealchemy.notebook_spec import notebook_to_toml_file
 from pdealchemy.render import render_explain_output
-from pdealchemy.validation import ValidationRunner
+from pdealchemy.validation import ValidationRunner, validate_equation_library
 
 app = typer.Typer(
     name="pdealchemy",
@@ -72,6 +73,36 @@ def price(
         raise typer.Exit(code=2) from exc
 
 
+@app.command("notebook-to-toml")
+def notebook_to_toml(
+    notebook_path: Path = typer.Argument(..., help="Path to a marimo specification notebook."),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output TOML file path. Defaults to notebook path with .toml suffix.",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite the output file if it already exists.",
+    ),
+) -> None:
+    """Convert a marimo specification notebook into TOML."""
+    try:
+        output_path = notebook_to_toml_file(
+            notebook_path,
+            output_path=output,
+            overwrite=overwrite,
+        )
+        console.print(
+            f"[bold green]Notebook conversion successful:[/bold green] wrote `{output_path}`."
+        )
+    except PDEAlchemyError as exc:
+        console.print(exc.to_cli_message())
+        raise typer.Exit(code=2) from exc
+
+
 @app.command()
 def validate(
     config_path: Path = typer.Argument(..., help="Path to a TOML config file."),
@@ -85,6 +116,14 @@ def validate(
         "--tolerance",
         min=0.0,
         help="Absolute error tolerance used with --analytical.",
+    ),
+    equation_library: Path | None = typer.Option(
+        None,
+        "--equation-library",
+        help=(
+            "Optional path to a Markdown equation library directory for constrained "
+            "LaTeX validation."
+        ),
     ),
 ) -> None:
     """Validate that the configuration file matches PDEAlchemy schema."""
@@ -112,6 +151,12 @@ def validate(
             validation_note = (
                 f"\nAnalytical benchmark: passed "
                 f"(abs error {outcome.absolute_error:.8f} <= {outcome.tolerance:.8f})"
+            )
+        if equation_library is not None:
+            equation_summary = validate_equation_library(equation_library)
+            validation_note += (
+                f"\nEquation library: validated {equation_summary.equation_blocks_validated} "
+                f"equation block(s) across {equation_summary.files_scanned} file(s)"
             )
         console.print(
             "[bold green]Validation successful:[/bold green] "

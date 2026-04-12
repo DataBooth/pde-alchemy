@@ -15,6 +15,8 @@ PDEAlchemy prioritises correctness by validating custom orchestration logic deep
 - Config schema and loader behaviour.
 - Feature detection and dispatch routing.
 - Symbolic bridge orchestration and render output wiring.
+- Notebook-to-TOML extraction and semantic cell mapping.
+- Constrained equation-library LaTeX validation and normalisation.
 - Adapter integration logic (especially discrete features and edge handling).
 - CLI behaviour, user-facing errors, and logging.
 
@@ -42,7 +44,31 @@ PDEAlchemy prioritises correctness by validating custom orchestration logic deep
 - `tests/core/*`: dispatching and adapter orchestration.
 - `tests/validation/*`: benchmark and validation-runner logic.
 - `tests/examples/*`: golden-path integration confidence.
+- `tests/notebook/*`: notebook spec conversion and notebook utility helpers.
+- `tests/cli/test_notebook_to_toml.py`: notebook conversion command behaviour.
 - `tests/test_notebook_support.py`: notebook orchestration helpers.
+- `tests/validation/test_equations.py`: constrained equation-library validation.
+
+## Black-Scholes-first validation ladder
+Start from the simplest deterministic baseline and add complexity incrementally.
+
+1. Baseline TOML validation and pricing
+- `uv run pdealchemy validate examples/vanilla_european_call.toml`
+- `uv run pdealchemy price examples/vanilla_european_call.toml`
+
+2. Analytical benchmark check (still vanilla)
+- `uv run pdealchemy validate examples/vanilla_european_call.toml --analytical --tolerance 0.75`
+
+3. Equation-library constrained validation
+- `uv run pdealchemy validate examples/vanilla_european_call.toml --equation-library library`
+
+4. Notebook-to-TOML baseline check
+- `uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite`
+- `uv run pdealchemy validate examples/notebooks/spec_black_scholes.toml`
+
+5. Only then move to richer routes
+- market curve/surface example (`examples/vanilla_market_curve_surface.toml`)
+- exotic path-dependent example (`examples/exotic_discrete_asian_barrier_dividend.toml`)
 
 ## Pull Request Expectations
 Each PR should:
