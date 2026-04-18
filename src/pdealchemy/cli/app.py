@@ -11,18 +11,15 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.syntax import Syntax
 
-from pdealchemy.config.loader import load_pricing_config
-from pdealchemy.core import price_config
-from pdealchemy.exceptions import PDEAlchemyError, ValidationError
-from pdealchemy.logging_config import configure_logging
-from pdealchemy.math_bridge import build_symbolic_problem
-from pdealchemy.notebook_spec import notebook_to_toml_file
-from pdealchemy.render import render_explain_output
-from pdealchemy.spec_bridge import (
-    BlackScholesBridgeDefaults,
-    spec_to_runtime_toml_file,
+from pdealchemy.cli.commands import (
+    run_explain_command,
+    run_notebook_to_toml_command,
+    run_price_command,
+    run_spec_to_runtime_toml_command,
+    run_validate_command,
 )
-from pdealchemy.validation import ValidationRunner, validate_equation_library
+from pdealchemy.exceptions import PDEAlchemyError
+from pdealchemy.logging_config import configure_logging
 
 app = typer.Typer(
     name="pdealchemy",
@@ -63,15 +60,7 @@ def price(
 ) -> None:
     """Run the pricing workflow."""
     try:
-        config_data = load_pricing_config(config_path)
-        pricing_result = price_config(config_data)
-        logger.info("Price command completed for {}", config_path)
-        console.print(
-            "[bold green]Pricing successful:[/bold green] "
-            f"{pricing_result.price:.8f}\n"
-            f"Backend: {pricing_result.backend}\n"
-            f"Engine: {pricing_result.engine}"
-        )
+        console.print(run_price_command(config_path))
     except PDEAlchemyError as exc:
         console.print(exc.to_cli_message())
         raise typer.Exit(code=2) from exc
@@ -94,13 +83,12 @@ def notebook_to_toml(
 ) -> None:
     """Convert a marimo specification notebook into TOML."""
     try:
-        output_path = notebook_to_toml_file(
-            notebook_path,
-            output_path=output,
-            overwrite=overwrite,
-        )
         console.print(
-            f"[bold green]Notebook conversion successful:[/bold green] wrote `{output_path}`."
+            run_notebook_to_toml_command(
+                notebook_path,
+                output_path=output,
+                overwrite=overwrite,
+            )
         )
     except PDEAlchemyError as exc:
         console.print(exc.to_cli_message())
@@ -140,27 +128,25 @@ def spec_to_runtime_toml(
 ) -> None:
     """Bridge a notebook specification TOML into executable runtime pricing TOML."""
     try:
-        defaults = BlackScholesBridgeDefaults(
-            spot=spot,
-            strike=strike,
-            rate=rate,
-            volatility=volatility,
-            maturity=maturity,
-            backend=backend,
-            scheme=scheme,
-            time_steps=time_steps,
-            damping_steps=damping_steps,
-            grid_lower=grid_lower,
-            grid_upper=grid_upper,
-            grid_points=grid_points,
+        console.print(
+            run_spec_to_runtime_toml_command(
+                spec_path,
+                output_path=output,
+                overwrite=overwrite,
+                spot=spot,
+                strike=strike,
+                rate=rate,
+                volatility=volatility,
+                maturity=maturity,
+                backend=backend,
+                scheme=scheme,
+                time_steps=time_steps,
+                damping_steps=damping_steps,
+                grid_lower=grid_lower,
+                grid_upper=grid_upper,
+                grid_points=grid_points,
+            )
         )
-        output_path = spec_to_runtime_toml_file(
-            spec_path,
-            output_path=output,
-            overwrite=overwrite,
-            defaults=defaults,
-        )
-        console.print(f"[bold green]Spec bridge successful:[/bold green] wrote `{output_path}`.")
     except PDEAlchemyError as exc:
         console.print(exc.to_cli_message())
         raise typer.Exit(code=2) from exc
@@ -191,41 +177,13 @@ def validate(
 ) -> None:
     """Validate that the configuration file matches PDEAlchemy schema."""
     try:
-        config_data = load_pricing_config(config_path)
-        _ = build_symbolic_problem(config_data)
-        validation_note = ""
-        if analytical:
-            runner = ValidationRunner()
-            outcome = runner.run_analytical_black_scholes(
-                config_data,
-                tolerance=tolerance,
-            )
-            if not outcome.passed:
-                raise ValidationError(
-                    "Analytical benchmark failed tolerance check.",
-                    details=(
-                        f"model={outcome.model_price:.8f}, "
-                        f"benchmark={outcome.benchmark_price:.8f}, "
-                        f"abs_error={outcome.absolute_error:.8f}, "
-                        f"tolerance={outcome.tolerance:.8f}"
-                    ),
-                    suggestion="Relax --tolerance or review model and numerical settings.",
-                )
-            validation_note = (
-                f"\nAnalytical benchmark: passed "
-                f"(abs error {outcome.absolute_error:.8f} <= {outcome.tolerance:.8f})"
-            )
-        if equation_library is not None:
-            equation_summary = validate_equation_library(equation_library)
-            validation_note += (
-                f"\nEquation library: validated {equation_summary.equation_blocks_validated} "
-                f"equation block(s) across {equation_summary.files_scanned} file(s)"
-            )
         console.print(
-            "[bold green]Validation successful:[/bold green] "
-            f"{len(config_data.process.state_variables)} state variable(s), "
-            f"backend `{config_data.numerics.backend}`."
-            f"{validation_note}"
+            run_validate_command(
+                config_path,
+                analytical=analytical,
+                tolerance=tolerance,
+                equation_library=equation_library,
+            )
         )
     except PDEAlchemyError as exc:
         console.print(exc.to_cli_message())
@@ -239,13 +197,7 @@ def explain(
 ) -> None:
     """Render a high-level description of the provided TOML config."""
     try:
-        config_data = load_pricing_config(config_path)
-        symbolic_problem = build_symbolic_problem(config_data)
-        rendered = render_explain_output(
-            config_data,
-            symbolic_problem,
-            output_format=format,
-        )
+        rendered = run_explain_command(config_path, output_format=format)
 
         if format is ExplainFormat.MARKDOWN:
             console.print(Markdown(rendered))
