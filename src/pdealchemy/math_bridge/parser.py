@@ -10,7 +10,14 @@ import sympy as sp
 
 from pdealchemy.exceptions import MathBridgeError
 
+
+def _pay_identity(value: object) -> object:
+    """Return payoff expression unchanged for side-effect-free PAY support."""
+    return value
+
+
 _ALLOWED_FUNCTIONS: dict[str, object] = {
+    "PAY": _pay_identity,
     "abs": sp.Abs,
     "exp": sp.exp,
     "log": sp.log,
@@ -62,7 +69,7 @@ def _validate_functions(expression: sp.Expr) -> None:
         raise MathBridgeError(
             "Expression uses unsupported function(s).",
             details=", ".join(unsupported),
-            suggestion="Use only abs, max, min, exp, log, or sqrt for now.",
+            suggestion="Use only PAY, abs, max, min, exp, log, or sqrt for now.",
         )
 
 
