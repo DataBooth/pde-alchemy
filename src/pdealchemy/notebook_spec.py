@@ -20,7 +20,7 @@ _CELL_SECTION_MAP: dict[str, tuple[str, ...]] = {
     "boundary_upper": ("boundary", "upper"),
     "discretisation": ("numerics",),
 }
-_SUPPORTED_EQUATION_HELPERS = {"math_eq", "eq_from_file"}
+_SUPPORTED_EQUATION_HELPERS = {"math_eq", "math_eq_editor", "eq_from_file"}
 _SUPPORTED_MARKDOWN_HELPERS = {"mo.md"}
 _SUPPORTED_FILE_MARKDOWN_HELPERS = {"spec_md"}
 

@@ -17,6 +17,54 @@ def _fake_marimo_module() -> SimpleNamespace:
     return SimpleNamespace(md=lambda text: text)
 
 
+class _FakeCodeEditor:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+
+class _FakeButton:
+    def __init__(self, on_click: Any) -> None:
+        self._on_click = on_click
+        self.value: Any = None
+
+    def click(self) -> None:
+        self.value = self._on_click(None)
+
+
+class _FakeUi:
+    def code_editor(
+        self,
+        value: str,
+        *,
+        language: str,
+        label: str,
+    ) -> _FakeCodeEditor:
+        _ = (language, label)
+        return _FakeCodeEditor(value)
+
+    def button(
+        self,
+        *,
+        on_click: Any,
+        label: str,
+        kind: str,
+    ) -> _FakeButton:
+        _ = (label, kind)
+        return _FakeButton(on_click)
+
+
+class _FakeEditorMarimo:
+    ui = _FakeUi()
+
+    @staticmethod
+    def md(text: str) -> tuple[str, str]:
+        return ("md", text)
+
+    @staticmethod
+    def vstack(blocks: list[object]) -> tuple[str, list[object]]:
+        return ("vstack", blocks)
+
+
 def test_math_eq_renders_raw_latex(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(notebook_utils, "_load_marimo_module", _fake_marimo_module)
 
@@ -116,6 +164,64 @@ def test_math_eq_returns_error_message_when_file_read_fails(
 
     assert "**Error loading equation file**" in rendered
     assert "Cannot read file" in rendered
+
+
+def test_math_eq_editor_renders_inline_editor_with_preview(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    equation_file = tmp_path / "equation.md"
+    equation_file.write_text(
+        "\n".join(
+            [
+                "PDE notes",
+                "\\[",
+                "\\frac{\\partial V}{\\partial t} + rSV_S = 0",
+                "\\]",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(notebook_utils, "_load_marimo_module", lambda: _FakeEditorMarimo)
+
+    rendered = notebook_utils.math_eq_editor(str(equation_file), name="Main PDE operator")
+
+    assert rendered[0] == "vstack"
+    editor = next(block for block in rendered[1] if isinstance(block, _FakeCodeEditor))
+    preview = rendered[1][-1]
+    assert "PDE notes" in editor.value
+    assert preview[0] == "md"
+    assert "### Main PDE operator" in preview[1]
+    assert "\\frac{\\partial V}{\\partial t} + rSV_S = 0" in preview[1]
+
+
+def test_math_eq_editor_persists_edited_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    equation_file = tmp_path / "equation.md"
+    equation_file.write_text("\\[\nS\n\\]", encoding="utf-8")
+    monkeypatch.setattr(notebook_utils, "_load_marimo_module", lambda: _FakeEditorMarimo)
+
+    rendered = notebook_utils.math_eq_editor(str(equation_file))
+    editor = next(block for block in rendered[1] if isinstance(block, _FakeCodeEditor))
+    button = next(block for block in rendered[1] if isinstance(block, _FakeButton))
+    editor.value = "\\[\nS-K\n\\]"
+
+    button.click()
+
+    assert equation_file.read_text(encoding="utf-8") == "\\[\nS-K\n\\]"
+    assert button.value == f"Saved `{equation_file}`."
+
+
+def test_math_eq_editor_rejects_missing_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(notebook_utils, "_load_marimo_module", lambda: _FakeEditorMarimo)
+
+    rendered = notebook_utils.math_eq_editor("library/pde/missing.md")
+
+    assert rendered[0] == "md"
+    assert "Error loading equation file" in rendered[1]
+    assert "file not found" in rendered[1]
 
 
 def test_load_marimo_module_raises_config_error_when_missing(
