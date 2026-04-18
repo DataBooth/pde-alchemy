@@ -34,13 +34,13 @@ explain config="examples/vanilla_european_call.toml" format="markdown":
     uv run pdealchemy explain {{config}} --format {{format}}
 
 notebook file="examples/notebooks/price_explorer.py":
-    uv run marimo edit {{file}}
+    uv run --extra interactive marimo edit {{file}}
 
 notebook-run file="examples/notebooks/price_explorer.py":
-    uv run marimo run {{file}}
+    uv run --extra interactive marimo run {{file}}
 
 notebook-check file="examples/notebooks/price_explorer.py":
-    uv run marimo check {{file}}
+    uv run --extra interactive marimo check {{file}}
 notebook-to-toml notebook="examples/notebooks/spec_black_scholes.py" output="examples/notebooks/black_scholes_blueprint.toml":
     uv run pdealchemy notebook-to-toml {{notebook}} --output {{output}} --overwrite
 spec-to-runtime-toml spec="examples/notebooks/black_scholes_blueprint.toml" output="examples/notebooks/black_scholes_pricing.toml":
@@ -55,10 +55,10 @@ bs-e2e notebook="examples/notebooks/spec_black_scholes.py" spec_output="examples
     uv run pdealchemy explain {{runtime_output}} --format {{explain_format}}
 
 bs-results:
-    uv run marimo edit examples/notebooks/black_scholes_results.py
+    uv run --extra interactive marimo edit examples/notebooks/black_scholes_results.py
 
 bs-spec-results:
-    uv run marimo edit examples/notebooks/spec_black_scholes_with_results.py
+    uv run --extra interactive marimo edit examples/notebooks/spec_black_scholes_with_results.py
 
 precommit-install:
     uv run pre-commit install
