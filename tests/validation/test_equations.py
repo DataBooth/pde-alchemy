@@ -84,6 +84,52 @@ def test_validate_equation_library_rejects_invalid_algebraic_expression(tmp_path
         _ = validate_equation_library(library_dir)
 
 
+def test_validate_equation_library_accepts_sde_section_without_sympy_parse(
+    tmp_path: Path,
+) -> None:
+    library_dir = tmp_path / "library"
+    (library_dir / "sde").mkdir(parents=True)
+    (library_dir / "sde" / "gbm.md").write_text(
+        "\n".join(
+            [
+                "Risk-neutral SDE",
+                "",
+                r"\[",
+                r"dS_t = r S_t\,dt + \sigma S_t\,dW_t^{Q}",
+                r"\]",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = validate_equation_library(library_dir)
+
+    assert summary.files_scanned == 1
+    assert summary.equation_blocks_validated == 1
+
+
+def test_validate_equation_library_rejects_equation_in_unsupported_section(
+    tmp_path: Path,
+) -> None:
+    library_dir = tmp_path / "library"
+    (library_dir / "discretisation").mkdir(parents=True)
+    (library_dir / "discretisation" / "bad_eq.md").write_text(
+        "\n".join(
+            [
+                "Unexpected equation in discretisation section",
+                "",
+                r"\[",
+                r"\frac{\partial V}{\partial t} = 0",
+                r"\]",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValidationError, match="unsupported semantic library section"):
+        _ = validate_equation_library(library_dir)
+
+
 def test_validate_equation_library_rejects_missing_directory(tmp_path: Path) -> None:
     missing_path = tmp_path / "missing_library"
 

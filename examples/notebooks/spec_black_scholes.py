@@ -8,9 +8,9 @@ app = marimo.App()
 def notebook_context():
     import marimo as mo
 
-    from pdealchemy.notebook_utils import math_eq
+    from pdealchemy.notebook_utils import math_eq, spec_md
 
-    return math_eq, mo
+    return math_eq, mo, spec_md
 
 
 @app.cell
@@ -36,11 +36,11 @@ def abstract_intro(mo):
 def assumptions(mo):
     mo.md("""
     ## Assumptions
-    - Frictionless market with continuous trading.
-    - Constant risk-free rate and constant volatility.
-    - No transaction costs or funding frictions.
-    - Underlying follows geometric Brownian motion.
-    - European exercise at maturity only.
+    - Pricing is under the risk-neutral measure.
+    - The market is complete for the specified factor structure.
+    - Dynamics are diffusion-only (no jump terms).
+    - Terminal and boundary conditions are well defined for a unique solution.
+    - Constant risk-free rate and constant volatility (Black-Scholes baseline).
     """)
     return
 
@@ -56,6 +56,13 @@ def instrument(mo):
 def numeraire(math_eq):
     """Domestic bank account numeraire in AUD."""
     math_eq("library/numeraire/domestic_aud.md")
+    return
+
+
+@app.cell
+def sde(math_eq):
+    """Risk-neutral asset dynamics."""
+    math_eq("library/sde/black_scholes_geometric_brownian_motion.md", name="Risk-neutral SDE")
     return
 
 
@@ -88,9 +95,9 @@ def boundary_upper(math_eq):
 
 
 @app.cell
-def discretisation(math_eq):
+def discretisation(spec_md):
     """Numerical discretisation settings."""
-    math_eq("library/discretisation/crank_nicolson_standard.md")
+    spec_md("library/discretisation/crank_nicolson_standard.md")
     return
 
 

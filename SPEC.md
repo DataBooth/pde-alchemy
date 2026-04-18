@@ -19,6 +19,7 @@ Notebooks are a first-class way to define pricing problems using semantic cell n
 ### Cell naming conventions
 - `instrument()` → `[instrument]`
 - `numeraire()` → `[numeraire]`
+- `sde()` → `[mathematics.sde]`
 - `pde()` → `[mathematics.operator]`
 - `payoff()` → `[payoff]`
 - `boundary_lower()`, `boundary_upper()` → `[boundary.lower]`, `[boundary.upper]`
@@ -29,6 +30,7 @@ Notebooks are a first-class way to define pricing problems using semantic cell n
 - Function docstring: concise human description
 - `mo.md(...)`: explanatory text or labels
 - `math_eq(...)`: inline LaTeX or equation-library file reference
+- `spec_md(...)`: markdown-file-backed narrative content for non-equation sections
 
 ### Canonical paths
 - Template notebook: `templates/spec_template.py`
@@ -38,6 +40,7 @@ Notebooks are a first-class way to define pricing problems using semantic cell n
 ## Library structure
 `library/` is organised by specification role:
 - `library/pde/`
+- `library/sde/`
 - `library/payoff/`
 - `library/boundary/`
 - `library/discretisation/`

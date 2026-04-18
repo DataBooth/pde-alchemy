@@ -25,6 +25,27 @@ def test_math_eq_renders_raw_latex(monkeypatch: pytest.MonkeyPatch) -> None:
     assert rendered == "\\[\n\\sigma(t, S) = \\sigma\n\\]"
 
 
+def test_spec_md_renders_raw_markdown(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(notebook_utils, "_load_marimo_module", _fake_marimo_module)
+
+    rendered = notebook_utils.spec_md("Crank-Nicolson discretisation")
+
+    assert rendered == "Crank-Nicolson discretisation"
+
+
+def test_spec_md_loads_markdown_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    markdown_file = tmp_path / "discretisation.md"
+    markdown_file.write_text("Scheme: Crank-Nicolson", encoding="utf-8")
+    monkeypatch.setattr(notebook_utils, "_load_marimo_module", _fake_marimo_module)
+
+    rendered = notebook_utils.spec_md(str(markdown_file))
+
+    assert rendered == "Scheme: Crank-Nicolson"
+
+
 def test_math_eq_renders_named_equation(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(notebook_utils, "_load_marimo_module", _fake_marimo_module)
 

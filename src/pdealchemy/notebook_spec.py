@@ -12,6 +12,7 @@ from pdealchemy.exceptions import ConfigError
 _CELL_SECTION_MAP: dict[str, tuple[str, ...]] = {
     "instrument": ("instrument",),
     "numeraire": ("numeraire",),
+    "sde": ("mathematics", "sde"),
     "pde": ("mathematics", "operator"),
     "payoff": ("payoff",),
     "boundary_lower": ("boundary", "lower"),
@@ -20,6 +21,7 @@ _CELL_SECTION_MAP: dict[str, tuple[str, ...]] = {
 }
 _SUPPORTED_EQUATION_HELPERS = {"math_eq", "eq_from_file"}
 _SUPPORTED_MARKDOWN_HELPERS = {"mo.md"}
+_SUPPORTED_FILE_MARKDOWN_HELPERS = {"spec_md"}
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,7 @@ class NotebookCell:
     function_name: str
     description: str | None
     markdown: str | None
+    file_markdown_content: str | None
     equation_content: str | None
 
 
@@ -54,6 +57,7 @@ def _call_name(node: ast.Call) -> str | None:
 def _extract_cell_details(function_node: ast.FunctionDef) -> NotebookCell:
     """Extract markdown and equation calls from a notebook cell function."""
     markdown_content: str | None = None
+    file_markdown_content: str | None = None
     equation_content: str | None = None
     for statement in function_node.body:
         if not isinstance(statement, ast.Expr) or not isinstance(statement.value, ast.Call):
@@ -62,12 +66,15 @@ def _extract_cell_details(function_node: ast.FunctionDef) -> NotebookCell:
         helper_name = _call_name(call)
         if helper_name in _SUPPORTED_MARKDOWN_HELPERS and markdown_content is None:
             markdown_content = _extract_string_argument(call)
+        if helper_name in _SUPPORTED_FILE_MARKDOWN_HELPERS and file_markdown_content is None:
+            file_markdown_content = _extract_string_argument(call)
         if helper_name in _SUPPORTED_EQUATION_HELPERS and equation_content is None:
             equation_content = _extract_string_argument(call)
     return NotebookCell(
         function_name=function_node.name,
         description=ast.get_docstring(function_node),
         markdown=markdown_content,
+        file_markdown_content=file_markdown_content,
         equation_content=equation_content,
     )
 
@@ -219,6 +226,11 @@ def notebook_to_toml_content(notebook_path: Path) -> str:
             values["description"] = cell.description.strip()
         if cell.markdown:
             values["markdown"] = cell.markdown.strip()
+        if cell.file_markdown_content:
+            if _looks_like_path(cell.file_markdown_content):
+                values["markdown_file"] = cell.file_markdown_content.strip()
+            else:
+                values["markdown"] = cell.file_markdown_content.strip()
         if cell.equation_content:
             if _looks_like_path(cell.equation_content):
                 values["equation_file"] = cell.equation_content.strip()
@@ -233,7 +245,7 @@ def notebook_to_toml_content(notebook_path: Path) -> str:
         raise ConfigError(
             "No mappable specification cells were found.",
             details=(
-                "Expected at least one of: instrument, numeraire, pde, payoff, "
+                "Expected at least one of: instrument, numeraire, sde, pde, payoff, "
                 "boundary_lower, boundary_upper, discretisation, or data_*."
             ),
             suggestion="Rename notebook cells to the expected semantic function names.",

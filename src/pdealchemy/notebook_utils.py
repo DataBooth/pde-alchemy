@@ -31,6 +31,13 @@ def _render_equation_block(*, latex: str, name: str | None, mo: ModuleType) -> o
     return mo.md(f"### {name.strip()}\n\n{equation_block}")
 
 
+def _render_markdown_block(*, markdown: str, name: str | None, mo: ModuleType) -> object:
+    """Render a markdown block with an optional heading."""
+    if name is None or not name.strip():
+        return mo.md(markdown)
+    return mo.md(f"### {name.strip()}\n\n{markdown}")
+
+
 def math_eq(content: str, *, name: str | None = None) -> object:
     """Render LaTeX content or file-backed LaTeX with an optional equation heading."""
     mo = _load_marimo_module()
@@ -44,3 +51,16 @@ def math_eq(content: str, *, name: str | None = None) -> object:
         except OSError as exc:
             return mo.md(f"**Error loading equation file** `{content}`: {exc}")
     return _render_equation_block(latex=content, name=name, mo=mo)
+
+
+def spec_md(content: str, *, name: str | None = None) -> object:
+    """Render markdown content or file-backed markdown with an optional heading."""
+    mo = _load_marimo_module()
+    candidate_path = Path(content).expanduser()
+    if candidate_path.is_file():
+        try:
+            markdown_text = candidate_path.read_text(encoding="utf-8").strip()
+            return _render_markdown_block(markdown=markdown_text, name=name, mo=mo)
+        except OSError as exc:
+            return mo.md(f"**Error loading markdown file** `{content}`: {exc}")
+    return _render_markdown_block(markdown=content, name=name, mo=mo)

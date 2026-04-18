@@ -7,9 +7,9 @@ app = marimo.App()
 def notebook_context():
     import marimo as mo
 
-    from pdealchemy.notebook_utils import math_eq
+    from pdealchemy.notebook_utils import math_eq, spec_md
 
-    return math_eq, mo
+    return math_eq, mo, spec_md
 
 
 @app.cell
@@ -34,9 +34,10 @@ def assumptions(mo):
     mo.md(
         """
         ## Assumptions
-        - {{Assumption 1}}
-        - {{Assumption 2}}
-        - {{Assumption 3}}
+        - Pricing is under the risk-neutral measure.
+        - Markets are complete for the specified factors and claims.
+        - Dynamics are diffusion-only (no jump terms).
+        - Terminal and boundary conditions are well defined for a unique solution.
         """
     )
     return
@@ -53,6 +54,13 @@ def instrument(mo):
 def numeraire(math_eq):
     """{{Numeraire description}}."""
     math_eq("library/numeraire/domestic_aud.md")
+    return
+
+
+@app.cell
+def sde(math_eq):
+    """Risk-neutral asset dynamics."""
+    math_eq("library/sde/black_scholes_geometric_brownian_motion.md", name="Risk-neutral SDE")
     return
 
 
@@ -85,9 +93,9 @@ def boundary_upper(math_eq):
 
 
 @app.cell
-def discretisation(math_eq):
+def discretisation(spec_md):
     """Numerical discretisation settings."""
-    math_eq("library/discretisation/crank_nicolson_standard.md")
+    spec_md("library/discretisation/crank_nicolson_standard.md")
     return
 
 
@@ -95,6 +103,13 @@ def discretisation(math_eq):
 def data_rates(math_eq):
     """Risk-free rates source."""
     math_eq("library/data/rates_flat.md")
+    return
+
+
+@app.cell
+def data_volatility(math_eq):
+    """Volatility source."""
+    math_eq("library/data/volatility_constant.md")
     return
 
 

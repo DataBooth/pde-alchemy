@@ -19,11 +19,16 @@ def _write_sample_notebook(path: Path) -> None:
         path,
         [
             "import marimo as mo",
-            "from pdealchemy.notebook_utils import math_eq",
+            "from pdealchemy.notebook_utils import math_eq, spec_md",
             "",
             "app = mo.App()",
             "",
             'mo.md("# Black-Scholes European Call — Specification")',
+            "",
+            "@app.cell",
+            "def sde():",
+            '    """Risk-neutral asset dynamics."""',
+            '    math_eq("library/sde/black_scholes_geometric_brownian_motion.md")',
             "",
             "@app.cell",
             "def instrument():",
@@ -34,6 +39,11 @@ def _write_sample_notebook(path: Path) -> None:
             "def pde():",
             '    """Main PDE operator."""',
             '    math_eq("library/pde/black_scholes.md")',
+            "",
+            "@app.cell",
+            "def discretisation():",
+            '    """Numerical discretisation settings."""',
+            '    spec_md("library/discretisation/crank_nicolson_standard.md")',
             "",
             "@app.cell",
             "def data_rates():",
@@ -54,8 +64,12 @@ def test_notebook_to_toml_content_maps_core_cells(tmp_path: Path) -> None:
     assert "[instrument]" in rendered
     assert 'description = "European vanilla call option in AUD."' in rendered
     assert 'markdown = "European Call"' in rendered
+    assert "[mathematics.sde]" in rendered
+    assert 'equation_file = "library/sde/black_scholes_geometric_brownian_motion.md"' in rendered
     assert "[mathematics.operator]" in rendered
     assert 'equation_file = "library/pde/black_scholes.md"' in rendered
+    assert "[numerics]" in rendered
+    assert 'markdown_file = "library/discretisation/crank_nicolson_standard.md"' in rendered
     assert "[data.rates]" in rendered
     assert 'equation = "r(t) = 0.05"' in rendered
 

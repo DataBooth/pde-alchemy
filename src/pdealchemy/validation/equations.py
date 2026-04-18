@@ -61,6 +61,15 @@ _GREEK_REPLACEMENTS = {
     r"\lambda": "lambda",
     r"\pi": "pi",
 }
+_SUPPORTED_EQUATION_SECTIONS = {
+    "sde",
+    "pde",
+    "payoff",
+    "boundary",
+    "numeraire",
+    "data",
+}
+_SYMPY_PARSE_SECTIONS = {"payoff", "numeraire", "data"}
 
 
 @dataclass(frozen=True)
@@ -69,6 +78,30 @@ class EquationLibraryValidationSummary:
 
     files_scanned: int
     equation_blocks_validated: int
+
+
+def _section_for_equation_file(*, markdown_file: Path, library_root: Path) -> str | None:
+    """Resolve top-level library section for a markdown equation file."""
+    relative_path = markdown_file.relative_to(library_root)
+    if len(relative_path.parts) == 1:
+        return None
+    return relative_path.parts[0]
+
+
+def _validate_equation_section(*, section: str | None, markdown_file: Path) -> None:
+    """Validate that equation-bearing files live in supported semantic sections."""
+    if section is None:
+        return
+    if section in _SUPPORTED_EQUATION_SECTIONS:
+        return
+    raise ValidationError(
+        "Equation file is in an unsupported semantic library section.",
+        details=f"{markdown_file}: section `{section}`",
+        suggestion=(
+            "Use one of: sde, pde, payoff, boundary, numeraire, data, or remove "
+            "equation blocks from non-equation sections."
+        ),
+    )
 
 
 def _extract_equation_blocks(markdown_text: str) -> list[str]:
@@ -191,9 +224,18 @@ def validate_equation_library(library_root: Path) -> EquationLibraryValidationSu
     for markdown_file in markdown_files:
         markdown_text = markdown_file.read_text(encoding="utf-8")
         equation_blocks = _extract_equation_blocks(markdown_text)
+        if not equation_blocks:
+            continue
+        section = _section_for_equation_file(
+            markdown_file=markdown_file,
+            library_root=library_root,
+        )
+        _validate_equation_section(section=section, markdown_file=markdown_file)
         for equation in equation_blocks:
             _validate_supported_latex_commands(equation, markdown_file=markdown_file)
-            if not _contains_non_algebraic_constructs(equation):
+            if (
+                section is None or section in _SYMPY_PARSE_SECTIONS
+            ) and not _contains_non_algebraic_constructs(equation):
                 _validate_algebraic_subset_with_sympy(equation, markdown_file=markdown_file)
             validated_blocks += 1
 

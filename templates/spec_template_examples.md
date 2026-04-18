@@ -7,6 +7,12 @@ uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --ou
 ```
 
 ## Equation library file examples
+### `library/sde/black_scholes_geometric_brownian_motion.md`
+Risk-neutral geometric Brownian motion dynamics
+
+\[
+dS_t = r S_t\,dt + \sigma S_t\,dW_t^{Q}
+\]
 ### `library/pde/black_scholes.md`
 Black-Scholes backward PDE
 
