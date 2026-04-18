@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pdealchemy.exceptions import ConfigError
+from pdealchemy.toml_rendering import render_toml_string
 
 _CELL_SECTION_MAP: dict[str, tuple[str, ...]] = {
     "instrument": ("instrument",),
@@ -118,20 +119,11 @@ def _looks_like_path(value: str) -> bool:
     return value.startswith(".")
 
 
-def _render_toml_string(value: str) -> str:
-    """Render a TOML string with support for multiline content."""
-    if "\n" in value:
-        escaped = value.replace("'''", "\\'\\'\\'")
-        return f"'''\n{escaped}\n'''"
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
-
-
 def _render_section(table_path: Iterable[str], values: dict[str, str]) -> list[str]:
     """Render one TOML table section."""
     lines = [f"[{'.'.join(table_path)}]"]
     for key, value in values.items():
-        lines.append(f"{key} = {_render_toml_string(value)}")
+        lines.append(f"{key} = {render_toml_string(value)}")
     lines.append("")
     return lines
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import cast
 
 from pdealchemy.exceptions import ConfigError
+from pdealchemy.toml_rendering import render_toml_string
 
 _BASELINE_SDE_FILE = "library/sde/black_scholes_geometric_brownian_motion.md"
 _BASELINE_PDE_FILE = "library/pde/black_scholes.md"
@@ -37,15 +38,6 @@ class BlackScholesBridgeDefaults:
     monte_carlo_paths: int = 20_000
     monte_carlo_seed: int = 1234
     monte_carlo_antithetic: bool = True
-
-
-def _render_toml_string(value: str) -> str:
-    """Render a TOML string with support for multiline content."""
-    if "\n" in value:
-        escaped = value.replace("'''", "\\'\\'\\'")
-        return f"'''\n{escaped}\n'''"
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
 
 
 def _render_toml_float(value: float) -> str:
@@ -249,8 +241,8 @@ def spec_to_runtime_toml_content(
         f"# Generated from {spec_toml_path.name} by pdealchemy spec-to-runtime-toml",
         "",
         "[metadata]",
-        f"name = {_render_toml_string(runtime_name)}",
-        f"description = {_render_toml_string(' '.join(runtime_description_parts))}",
+        f"name = {render_toml_string(runtime_name)}",
+        f"description = {render_toml_string(' '.join(runtime_description_parts))}",
         'tags = ["notebook-bridge", "black-scholes", "vanilla"]',
         "",
         "[process]",
