@@ -14,19 +14,22 @@ def _():
     from pdealchemy.exceptions import PDEAlchemyError
     from pdealchemy.notebook_support import (
         apply_interactive_profile,
-        canonical_example_paths,
         canonical_example_dropdown_options,
+        canonical_example_paths,
         default_canonical_example_label,
         load_canonical_example,
         prepare_notebook_outputs,
-        resolve_canonical_example_selection,
         repository_root_from_notebook,
+        resolve_canonical_example_selection,
         with_monte_carlo_paths,
     )
 
+    pdealchemy_error_cls = PDEAlchemyError
+    path_cls = Path
+
     return (
-        PDEAlchemyError,
-        Path,
+        pdealchemy_error_cls,
+        path_cls,
         apply_interactive_profile,
         canonical_example_dropdown_options,
         canonical_example_paths,
@@ -43,13 +46,13 @@ def _():
 
 @app.cell
 def _(
-    Path,
+    path_cls,
     canonical_example_dropdown_options,
     default_canonical_example_label,
     mo,
     repository_root_from_notebook,
 ):
-    repo_root = repository_root_from_notebook(Path(__file__))
+    repo_root = repository_root_from_notebook(path_cls(__file__))
     example_options = canonical_example_dropdown_options(repo_root)
     default_example_label = default_canonical_example_label(repo_root)
     example = mo.ui.dropdown(
@@ -173,7 +176,7 @@ def _(
 
 @app.cell
 def _(
-    PDEAlchemyError,
+    pdealchemy_error_cls,
     apply_interactive_profile,
     canonical_example_paths,
     compare_backends,
@@ -206,10 +209,7 @@ def _(
     config_data = apply_interactive_profile(config_data, selected_runtime_profile)
 
     examples = canonical_example_paths(repo_root)
-    path_summary = (
-        f"- vanilla: `{examples['vanilla']}`\n"
-        f"- exotic: `{examples['exotic']}`"
-    )
+    path_summary = f"- vanilla: `{examples['vanilla']}`\n- exotic: `{examples['exotic']}`"
     selected_backends = ("quantlib", "py_pde")
     if selected != "vanilla" or not compare_backends.value:
         selected_backends = ("quantlib",)
@@ -231,11 +231,9 @@ def _(
             include_convergence=include_convergence_now,
             convergence_points=convergence_points.value,
         )
-    except PDEAlchemyError as error:
+    except pdealchemy_error_cls as error:
         error_text = (
-            f"**Error:** {error.message}\n\n"
-            f"{error.details or ''}\n\n"
-            f"{error.suggestion or ''}"
+            f"**Error:** {error.message}\n\n{error.details or ''}\n\n{error.suggestion or ''}"
         )
         error_view = mo.md(error_text)
     return (
@@ -270,7 +268,11 @@ def _(
             )
 
         pricing_rows = [
-            f"| `{summary_backend_name}` | `{summary_result.price:.8f}` | `{summary_result.engine}` |"
+            (
+                f"| `{summary_backend_name}` | "
+                f"`{summary_result.price:.8f}` | "
+                f"`{summary_result.engine}` |"
+            )
             for summary_backend_name, summary_result in outputs.pricing_by_backend.items()
         ]
         if len(outputs.pricing_by_backend) > 1:
@@ -297,7 +299,9 @@ def _(
                     f"`{summary_greek_values['rho']:.6f}` | "
                     f"`{summary_greek_values['theta']:.6f}` |"
                 )
-                for summary_greek_backend_name, summary_greek_values in outputs.greeks_by_backend.items()
+                for summary_greek_backend_name, summary_greek_values in (
+                    outputs.greeks_by_backend.items()
+                )
             ]
             greek_summary = "\n".join(
                 [
@@ -327,8 +331,7 @@ def _(
             )
         if example.value not in example_options:
             notebook_notes = (
-                f"{notebook_notes}\n"
-                "- Selection was normalised from a non-standard dropdown value."
+                f"{notebook_notes}\n- Selection was normalised from a non-standard dropdown value."
             )
 
         summary = mo.md(
@@ -530,7 +533,7 @@ def _(
             if block is not None:
                 view_blocks.append(block)
         view = mo.vstack(view_blocks) if view_blocks else mo.md("")
-    view
+    view  # noqa: B018
     return
 
 
