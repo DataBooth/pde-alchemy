@@ -406,16 +406,32 @@ def build_report_chart_views(
         return chart_views
 
     import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 
     outputs = report.outputs
     if selection.include_pricing:
+        backend_names = list(outputs.pricing_by_backend.keys())
+        backend_prices = [result.price for result in outputs.pricing_by_backend.values()]
         pricing_chart = go.Figure()
-        pricing_chart.add_bar(
-            x=list(outputs.pricing_by_backend.keys()),
-            y=[result.price for result in outputs.pricing_by_backend.values()],
+        pricing_chart.add_scatter(
+            x=backend_names,
+            y=backend_prices,
+            mode="lines+markers",
+            marker={"size": 10},
+            line={"width": 2},
+            name="Model price",
         )
+        if outputs.analytical_outcome is not None:
+            benchmark_price = outputs.analytical_outcome.benchmark_price
+            pricing_chart.add_hline(
+                y=benchmark_price,
+                line_dash="dash",
+                line_color="darkgreen",
+                annotation_text=f"Analytical benchmark: {benchmark_price:.6f}",
+                annotation_position="top right",
+            )
         pricing_chart.update_layout(
-            title="Pricing by backend",
+            title="Pricing comparison",
             xaxis_title="Backend",
             yaxis_title="Option value",
             template="plotly_white",
@@ -423,20 +439,40 @@ def build_report_chart_views(
         chart_views.append(pricing_chart)
 
     if selection.include_sensitivities and outputs.greeks_by_backend:
-        greek_chart = go.Figure()
+        greek_chart = make_subplots(
+            rows=2,
+            cols=3,
+            subplot_titles=("Delta", "Gamma", "Vega", "Rho", "Theta", ""),
+            vertical_spacing=0.16,
+            horizontal_spacing=0.08,
+        )
         greek_names = ["delta", "gamma", "vega", "rho", "theta"]
-        for backend_name, greeks in outputs.greeks_by_backend.items():
+        subplot_positions = {
+            "delta": (1, 1),
+            "gamma": (1, 2),
+            "vega": (1, 3),
+            "rho": (2, 1),
+            "theta": (2, 2),
+        }
+        backend_names = list(outputs.greeks_by_backend.keys())
+        for greek_name in greek_names:
+            row, col = subplot_positions[greek_name]
             greek_chart.add_bar(
-                name=backend_name,
-                x=greek_names,
-                y=[greeks[name] for name in greek_names],
+                x=backend_names,
+                y=[outputs.greeks_by_backend[backend][greek_name] for backend in backend_names],
+                name=greek_name.title(),
+                showlegend=False,
+                row=row,
+                col=col,
             )
+            greek_chart.update_yaxes(title_text=greek_name.title(), row=row, col=col)
+            greek_chart.update_xaxes(title_text="Backend", row=row, col=col)
+        greek_chart.update_xaxes(visible=False, row=2, col=3)
+        greek_chart.update_yaxes(visible=False, row=2, col=3)
         greek_chart.update_layout(
-            title="Sensitivities by backend",
-            xaxis_title="Greek",
-            yaxis_title="Value",
-            barmode="group",
+            title="Greeks comparison (separate axes)",
             template="plotly_white",
+            height=650,
         )
         chart_views.append(greek_chart)
 
