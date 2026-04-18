@@ -41,6 +41,8 @@ notebook-run file="examples/notebooks/price_explorer.py":
 
 notebook-check file="examples/notebooks/price_explorer.py":
     uv run marimo check {{file}}
+notebook-to-toml notebook="examples/notebooks/spec_black_scholes.py" output="examples/notebooks/spec_black_scholes.toml":
+    uv run pdealchemy notebook-to-toml {{notebook}} --output {{output}} --overwrite
 
 precommit-install:
     uv run pre-commit install

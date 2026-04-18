@@ -83,6 +83,8 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "src/pdealchemy/cli/app.py" = ["B008"]
 "tests/**/*.py" = ["ANN", "D"]
+"examples/notebooks/*.py" = ["ANN", "D"]
+"templates/*.py" = ["ANN", "D"]
 
 [tool.ruff.format]
 quote-style = "double"

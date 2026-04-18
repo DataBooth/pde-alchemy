@@ -1,97 +1,74 @@
-# PDEAlchemy — Framework Overview for LLM Assistants
-
-## Project Name & Tagline
+# PDEAlchemy — Framework overview
+## Project name and tagline
 **PDEAlchemy** — Turning mathematical descriptions into accurate option prices with best-of-breed PDE solvers.
+Python package: `pdealchemy`
 
-**Python package**: `pdealchemy`
+## Core goals
+- Build a lightweight, extensible Python framework for pricing vanilla and exotic options using discretised PDE methods.
+- Minimise custom numerical code by leaning on mature libraries (`QuantLib-Python`, `py-pde`) and focusing custom effort on orchestration, validation, and explainability.
+- Keep correctness first: rigorous validation, clear diagnostics, and explicit assumptions.
 
-## Project Goal
-Build a lightweight, extensible Python framework for pricing general (including exotic/unusual) financial options using discretized PDE methods.
+## Interfaces
+1. Primary: CLI (`pdealchemy price`, `validate`, `explain`, `notebook-to-toml`)
+2. Interactive: marimo notebooks for exploration and specification authoring
+3. Assistive (phase 2): LLM copilot workflows
 
-Minimize custom code by leveraging mature open-source libraries. Users define instruments via TOML config and stay close to the underlying mathematics (symbolic drift/diffusion/payoff expressions).
+## Notebook-first specification style
+Notebooks are a first-class way to define pricing problems using semantic cell names that map to TOML sections.
 
-Prioritize **correctness first** (rigorous validation pyramid) over speed. Optimization (e.g., Mojo kernels) comes later.
+### Cell naming conventions
+- `instrument()` → `[instrument]`
+- `numeraire()` → `[numeraire]`
+- `sde()` → `[mathematics.sde]`
+- `pde()` → `[mathematics.operator]`
+- `payoff()` → `[payoff]`
+- `boundary_lower()`, `boundary_upper()` → `[boundary.lower]`, `[boundary.upper]`
+- `discretisation()` → `[numerics]`
+- `data_rates()`, `data_volatility()`, etc. → `[data.*]`
 
-## Development Workflow
-- **Granular PR-driven process**: Each small, focused feature or step is developed in its own branch and merged via Pull Request to `main`.
-- `main` branch is always kept in a working state (tests passing, basic examples runnable).
-- **Progressive blogging**: After each meaningful PR is merged, a short blog post (Markdown) is written documenting:
-  - What was implemented
-  - Key design decisions
-  - Lessons learned
-  - Usage examples or screenshots
-- This creates a living development blog series that documents the evolution of PDEAlchemy.
+### Notebook helper conventions
+- Function docstring: concise human description
+- `mo.md(...)`: explanatory text or labels
+- `math_eq(...)`: inline LaTeX or equation-library file reference
+- `spec_md(...)`: markdown-file-backed narrative content for non-equation sections
 
-## User-Facing Interfaces
-1. **Primary: CLI** (Typer + Rich) — production-ready, scriptable.
-   - Commands: `price`, `validate`, `explain`
-2. **Interactive/Exploratory: marimo notebooks** (optional examples)
-3. **Assistive (Phase 2): LLM Copilot**
+### Canonical paths
+- Template notebook: `templates/spec_template.py`
+- Example notebook: `examples/notebooks/spec_black_scholes.py`
+- Equation library root: `library/`
 
-## Key Feature: Explain / Render Command
-`pdealchemy explain config.toml [--format markdown|text|latex]`
+## Library structure
+`library/` is organised by specification role:
+- `library/pde/`
+- `library/sde/`
+- `library/payoff/`
+- `library/boundary/`
+- `library/discretisation/`
+- `library/numeraire/`
+- `library/data/`
 
-Renders TOML into clean mathematical + textual description (SDEs, PDE, payoff, discrete conditions, boundaries, numerical setup).
+## Development workflow
+- Use granular, focused PRs into `main`.
+- Keep `main` in a working state (tests passing, examples runnable).
+- After meaningful merges, add short engineering notes in `docs/blog/`.
+- Prefer `just` recipes for repeatable local workflows.
 
-## Library Stack
-- **Config & Settings**: `pydantic` + `pydantic-settings`
-- **CLI**: `typer` (with Rich)
-- **Logging**: `loguru` (structured, contextual, multiple sinks)
-- **Paths**: `pathlib`
-- **Task Runner**: `just` (via `justfile`)
-- **Core Solvers**: `QuantLib-Python`, `py-pde`
-- **Math Bridge**: `SymPy` + `Numba`
-- **Numerics**: `numpy`, `scipy`
-- **Testing**: `pytest`
-- **Interactive**: `marimo` (optional)
-- Optional: `rich`, `matplotlib`/`plotly`
-
-## High-Level Code Design
-- `config/` — Pydantic models + settings
-- `math_bridge/` — Symbolic parsing + renderer
-- `render/` — Mathematical description generation
-- `core/` — Builder, dispatcher, adapters
-- `validation/` — Validation pyramid
-- `cli/` — Typer commands
-- `logging_config.py`, `exceptions.py` — Logging + error handling
-- `examples/notebooks/` — marimo examples
-- Blog posts in `docs/blog/` (progressive series)
-
-## Error Handling & Logging
-- Custom `PDEAlchemyError` hierarchy with clear messages and suggestions.
-- Pydantic errors reformatted helpfully.
-- Loguru with rich context, console + optional JSON sinks.
-- Pretty Rich errors in CLI, detailed logging for debugging.
-- `--debug` / `--verbose` flags.
-
-## Validation Strategy
-Progressive pyramid:
-1. Unit tests
+## Validation philosophy
+Validation is risk-based and progressive:
+1. Unit tests on custom orchestration logic
 2. Analytical benchmarks
 3. Convergence studies
 4. Monte Carlo cross-checks
 5. Regression golden-set tests
 
-## LLM Copilot (Phase 2)
-Natural-language assistance for config creation, explanations, and error help.
+Canonical validation guidance lives in `VALIDATION_PHILOSOPHY.md` and `docs/validation_strategy.md`.
 
-## marimo Notebooks (Optional)
-Reactive interactive interface for exploration and demos.
+## Error handling and logging
+- Use `PDEAlchemyError` subclasses with actionable suggestions.
+- Keep CLI output clear and structured.
+- Support debug and verbose logging paths (`--debug`, `--verbose`).
 
-## Next Steps (Granular PR Plan)
-Development will proceed in small, mergeable steps via PRs to `main`, each followed by a blog post:
-
-1. Project skeleton + pyproject.toml + justfile + basic logging & exceptions
-2. Pydantic settings models + TOML schema
-3. Math bridge + symbolic parser
-4. Render/explain command + mathematical description output
-5. Core dispatcher + QuantLib adapter
-6. Validation harness (starting with analytical cases)
-7. First exotic example (discrete Asian + barrier + dividend)
-8. marimo notebook examples
-9. Phase 2: LLM Copilot
-
----
-
-**Instructions for LLM Assistants**  
-Follow the granular PR + progressive blogging workflow. Keep changes small and focused. After each major step, suggest a blog post title and outline. Prioritize minimal custom code, excellent error handling/logging, CLI-first design, and the explain renderer.
+## Guidance for contributors and assistants
+- Keep changes small, explicit, and test-backed.
+- Prioritise correctness, transparency, and maintainability over premature optimisation.
+- Ensure notebook-driven and TOML-driven flows stay consistent.

@@ -119,6 +119,60 @@ def test_validate_accepts_valid_toml(tmp_path: Path) -> None:
     assert "backend `quantlib`" in result.output
 
 
+def test_validate_with_equation_library_reports_summary(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(_valid_config_toml(), encoding="utf-8")
+    library_path = tmp_path / "library"
+    library_path.mkdir()
+    (library_path / "payoff.md").write_text(
+        "\n".join(
+            [
+                "European call payoff",
+                "",
+                r"\[",
+                r"V(T, S) = \max(S - K, 0)",
+                r"\]",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["validate", str(config_path), "--equation-library", str(library_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "Equation library: validated 1 equation block(s) across 1 file(s)" in result.output
+
+
+def test_validate_with_equation_library_rejects_invalid_latex(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(_valid_config_toml(), encoding="utf-8")
+    library_path = tmp_path / "library"
+    library_path.mkdir()
+    (library_path / "invalid.md").write_text(
+        "\n".join(
+            [
+                "Invalid equation command",
+                "",
+                r"\[",
+                r"V(T, S) = \foobar(S)",
+                r"\]",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["validate", str(config_path), "--equation-library", str(library_path)],
+    )
+
+    assert result.exit_code == 2
+    assert "unsupported LaTeX command" in result.output
+
+
 def test_validate_analytical_passes_for_vanilla(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
     config_path.write_text(_valid_config_toml(), encoding="utf-8")
