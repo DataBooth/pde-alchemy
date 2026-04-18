@@ -106,6 +106,8 @@ def test_help_includes_expected_commands() -> None:
     assert "price" in result.output
     assert "validate" in result.output
     assert "explain" in result.output
+    assert "notebook-to-toml" in result.output
+    assert "spec-to-runtime-toml" in result.output
 
 
 def test_validate_accepts_valid_toml(tmp_path: Path) -> None:

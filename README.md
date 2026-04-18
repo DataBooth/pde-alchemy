@@ -59,6 +59,7 @@ flowchart LR
     Outputs --> UX
 ```
 
+
 ### Pricing Execution Flow
 ```mermaid
 sequenceDiagram
@@ -112,6 +113,7 @@ uv run pdealchemy validate path/to/config.toml
 uv run pdealchemy explain path/to/config.toml --format markdown
 uv run pdealchemy validate path/to/config.toml --analytical --tolerance 0.75
 uv run pdealchemy validate path/to/config.toml --equation-library library
+uv run pdealchemy spec-to-runtime-toml path/to/spec.toml --output path/to/runtime.toml --overwrite
 uv run pdealchemy price path/to/config.toml
 ```
 
@@ -171,10 +173,27 @@ Convert a specification notebook into TOML:
 ```bash
 uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite
 ```
+Bridge spec TOML to executable runtime TOML:
+```bash
+uv run pdealchemy spec-to-runtime-toml examples/notebooks/spec_black_scholes.toml --output examples/notebooks/spec_black_scholes.runtime.toml --overwrite
+```
 
-Or use the just recipe:
+Or use just recipes:
 ```bash
 just notebook-to-toml
+just spec-to-runtime-toml
+just bs-e2e
+just bs-results
+just bs-spec-results
+```
+
+Results capture notebook:
+```bash
+just notebook examples/notebooks/black_scholes_results.py
+```
+Combined notebook (specification content followed by outputs):
+```bash
+just notebook examples/notebooks/spec_black_scholes_with_results.py
 ```
 
 ## Lint, Type Checks, and Pre-Commit
@@ -200,6 +219,7 @@ just precommit-run
 - Philosophy: `VALIDATION_PHILOSOPHY.md`
 - Practical strategy and trust boundaries: `docs/validation_strategy.md`
 - Black-Scholes-first testing path: `docs/black_scholes_first_workflow.md`
+- Output artefact content and format options: `docs/output_specification.md`
 - Data source purpose and limitations: `docs/market_data_sources.md`
 
 ## Development Blog

@@ -25,27 +25,43 @@ Export the notebook semantics into TOML:
 uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite
 ```
 
-## 4) Validate the equation library
-Run constrained LaTeX validation for equations in `library/`:
+## 4) Bridge spec TOML to runtime TOML
+Generate an executable pricing config from the notebook spec artefact:
 ```bash
-uv run pdealchemy validate examples/vanilla_european_call.toml --equation-library library
+uv run pdealchemy spec-to-runtime-toml examples/notebooks/spec_black_scholes.toml --output examples/notebooks/spec_black_scholes.runtime.toml --overwrite
 ```
 
-## 5) Run the baseline Black-Scholes runtime config
-Use the canonical runtime config for pricing and explainability checks:
+## 5) Validate the equation library
+Run constrained LaTeX validation for equations in `library/` together with runtime schema checks:
 ```bash
-uv run pdealchemy validate examples/vanilla_european_call.toml
-uv run pdealchemy validate examples/vanilla_european_call.toml --analytical --tolerance 0.75
-uv run pdealchemy price examples/vanilla_european_call.toml
-uv run pdealchemy explain examples/vanilla_european_call.toml --format markdown
+uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --equation-library library
 ```
 
-## Current status of notebook-to-runtime flow
-At present, notebook-generated TOML captures specification structure but is not yet a direct runtime pricing config.
+## 6) Run baseline pricing and explain outputs
+Use the bridged runtime config for pricing and explainability checks:
+```bash
+uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --analytical --tolerance 0.75
+uv run pdealchemy price examples/notebooks/spec_black_scholes.runtime.toml
+uv run pdealchemy explain examples/notebooks/spec_black_scholes.runtime.toml --format markdown
+```
 
-Use:
-- notebook TOML for specification capture and review, and
-- `examples/vanilla_european_call.toml` (or equivalent runtime TOML) for executable validation and pricing.
+## 7) Optional: run the full baseline chain in one command
+```bash
+just bs-e2e
+```
+
+## 8) Optional: capture outputs in a results notebook
+```bash
+just notebook examples/notebooks/black_scholes_results.py
+```
+This notebook supports selectable sections (pricing, sensitivities, sweeps, validation, explain) and render modes (tables and/or Plotly charts).
+
+## 9) Optional: use one notebook with spec content followed by outputs
+```bash
+just notebook examples/notebooks/spec_black_scholes_with_results.py
+```
+
+Output artefact content and format guidance is documented in `docs/output_specification.md`.
 
 ## Next expansion steps
 After the baseline is stable, expand in order:

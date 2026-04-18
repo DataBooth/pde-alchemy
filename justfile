@@ -43,6 +43,22 @@ notebook-check file="examples/notebooks/price_explorer.py":
     uv run marimo check {{file}}
 notebook-to-toml notebook="examples/notebooks/spec_black_scholes.py" output="examples/notebooks/spec_black_scholes.toml":
     uv run pdealchemy notebook-to-toml {{notebook}} --output {{output}} --overwrite
+spec-to-runtime-toml spec="examples/notebooks/spec_black_scholes.toml" output="examples/notebooks/spec_black_scholes.runtime.toml":
+    uv run pdealchemy spec-to-runtime-toml {{spec}} --output {{output}} --overwrite
+
+bs-e2e notebook="examples/notebooks/spec_black_scholes.py" spec_output="examples/notebooks/spec_black_scholes.toml" runtime_output="examples/notebooks/spec_black_scholes.runtime.toml" explain_format="markdown":
+    uv run pdealchemy notebook-to-toml {{notebook}} --output {{spec_output}} --overwrite
+    uv run pdealchemy spec-to-runtime-toml {{spec_output}} --output {{runtime_output}} --overwrite
+    uv run pdealchemy validate {{runtime_output}} --equation-library library
+    uv run pdealchemy validate {{runtime_output}} --analytical --tolerance 0.75
+    uv run pdealchemy price {{runtime_output}}
+    uv run pdealchemy explain {{runtime_output}} --format {{explain_format}}
+
+bs-results:
+    uv run marimo edit examples/notebooks/black_scholes_results.py
+
+bs-spec-results:
+    uv run marimo edit examples/notebooks/spec_black_scholes_with_results.py
 
 precommit-install:
     uv run pre-commit install
