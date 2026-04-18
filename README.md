@@ -195,6 +195,16 @@ Combined notebook (specification content followed by outputs):
 ```bash
 just notebook examples/notebooks/spec_black_scholes_with_results.py
 ```
+## Experimental pure PAY wrapper
+PDEAlchemy now supports a side-effect-free payoff wrapper function in symbolic expressions:
+```bash
+PAY(max(S - K, 0))
+```
+This exploratory mode is inspired by OpenSourceRisk conventions documented at `opensourcerisk.org`.
+Current scope:
+- `PAY(...)` is interpreted as a pure identity wrapper around the contained payoff expression.
+- This enables exploration of ORE-style payoff authoring without changing core pricing behaviour.
+- `LOGPAY(...)` remains unsupported in core pricing and is intentionally treated as out of scope.
 
 ## Lint, Type Checks, and Pre-Commit
 Ruff and ty are configured for progressive quality enforcement:

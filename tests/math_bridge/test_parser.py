@@ -56,6 +56,19 @@ def test_parse_expression_rejects_unsupported_functions() -> None:
         parse_expression("sin(S)", allowed_symbols={"S"})
 
 
+def test_parse_expression_supports_pure_pay_wrapper() -> None:
+    parsed = parse_expression("PAY(max(S - K, 0))", allowed_symbols={"S", "K"})
+    compiled = compile_expression(parsed, substitutions={"K": 100.0})
+
+    assert compiled.symbol_order == ("S",)
+    assert compiled(125.0) == pytest.approx(25.0)
+
+
+def test_parse_expression_rejects_logpay_function() -> None:
+    with pytest.raises(MathBridgeError, match="unsupported function"):
+        parse_expression("LOGPAY(S)", allowed_symbols={"S"})
+
+
 def test_compile_expression_with_substitutions() -> None:
     parsed = parse_expression("r * S + K", allowed_symbols={"r", "S", "K"})
     compiled = compile_expression(parsed, substitutions={"r": 0.05, "K": 1.0})
@@ -74,6 +87,21 @@ def test_build_symbolic_problem_from_config() -> None:
         substitutions=symbolic_problem.parameter_values,
     )
     assert compiled_drift(100.0) == pytest.approx(5.0)
+
+
+def test_build_symbolic_problem_supports_pay_wrapper() -> None:
+    payload = _valid_config()
+    instrument = payload["instrument"]
+    assert isinstance(instrument, dict)
+    instrument["payoff"] = "PAY(max(S - K, 0))"
+    config_data = PricingConfig.model_validate(payload)
+
+    symbolic_problem = build_symbolic_problem(config_data)
+    compiled_payoff = compile_expression(
+        symbolic_problem.payoff,
+        substitutions=symbolic_problem.parameter_values,
+    )
+    assert compiled_payoff(120.0) == pytest.approx(20.0)
 
 
 _FINITE_FLOATS = st.floats(
