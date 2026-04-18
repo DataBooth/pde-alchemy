@@ -99,6 +99,8 @@ just test
 uv run pdealchemy --help
 ```
 
+For a step-by-step notebook-first Black-Scholes path, see `QUICKSTART.md`.
+
 ## Canonical Examples
 - Vanilla: `examples/vanilla_european_call.toml`
 - Exotic (discrete Asian + barrier + dividends): `examples/exotic_discrete_asian_barrier_dividend.toml`
