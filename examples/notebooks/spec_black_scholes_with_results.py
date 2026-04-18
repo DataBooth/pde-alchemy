@@ -148,7 +148,7 @@ def output_controls(
 ):
     controls = create_notebook_report_controls(
         mo,
-        runtime_toml_default="examples/notebooks/spec_black_scholes.runtime.toml",
+        runtime_toml_default="examples/notebooks/black_scholes_pricing.toml",
         equation_library_default="library",
     )
     render_notebook_report_controls(

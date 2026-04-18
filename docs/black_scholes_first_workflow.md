@@ -38,12 +38,12 @@ This catches:
 ## 4) Notebook-driven spec and runtime bridge baseline
 Validate the notebook-to-TOML path, then bridge to executable runtime TOML.
 
-- `uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite`
-- `uv run pdealchemy spec-to-runtime-toml examples/notebooks/spec_black_scholes.toml --output examples/notebooks/spec_black_scholes.runtime.toml --overwrite`
-- `uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --equation-library library`
-- `uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --analytical --tolerance 0.75`
-- `uv run pdealchemy price examples/notebooks/spec_black_scholes.runtime.toml`
-- `uv run pdealchemy explain examples/notebooks/spec_black_scholes.runtime.toml --format markdown`
+- `uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/black_scholes_blueprint.toml --overwrite`
+- `uv run pdealchemy spec-to-runtime-toml examples/notebooks/black_scholes_blueprint.toml --output examples/notebooks/black_scholes_pricing.toml --overwrite`
+- `uv run pdealchemy validate examples/notebooks/black_scholes_pricing.toml --equation-library library`
+- `uv run pdealchemy validate examples/notebooks/black_scholes_pricing.toml --analytical --tolerance 0.75`
+- `uv run pdealchemy price examples/notebooks/black_scholes_pricing.toml`
+- `uv run pdealchemy explain examples/notebooks/black_scholes_pricing.toml --format markdown`
 
 ## 5) Optional one-command baseline run
 - `just bs-e2e`

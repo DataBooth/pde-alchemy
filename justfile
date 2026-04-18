@@ -41,12 +41,12 @@ notebook-run file="examples/notebooks/price_explorer.py":
 
 notebook-check file="examples/notebooks/price_explorer.py":
     uv run marimo check {{file}}
-notebook-to-toml notebook="examples/notebooks/spec_black_scholes.py" output="examples/notebooks/spec_black_scholes.toml":
+notebook-to-toml notebook="examples/notebooks/spec_black_scholes.py" output="examples/notebooks/black_scholes_blueprint.toml":
     uv run pdealchemy notebook-to-toml {{notebook}} --output {{output}} --overwrite
-spec-to-runtime-toml spec="examples/notebooks/spec_black_scholes.toml" output="examples/notebooks/spec_black_scholes.runtime.toml":
+spec-to-runtime-toml spec="examples/notebooks/black_scholes_blueprint.toml" output="examples/notebooks/black_scholes_pricing.toml":
     uv run pdealchemy spec-to-runtime-toml {{spec}} --output {{output}} --overwrite
 
-bs-e2e notebook="examples/notebooks/spec_black_scholes.py" spec_output="examples/notebooks/spec_black_scholes.toml" runtime_output="examples/notebooks/spec_black_scholes.runtime.toml" explain_format="markdown":
+bs-e2e notebook="examples/notebooks/spec_black_scholes.py" spec_output="examples/notebooks/black_scholes_blueprint.toml" runtime_output="examples/notebooks/black_scholes_pricing.toml" explain_format="markdown":
     uv run pdealchemy notebook-to-toml {{notebook}} --output {{spec_output}} --overwrite
     uv run pdealchemy spec-to-runtime-toml {{spec_output}} --output {{runtime_output}} --overwrite
     uv run pdealchemy validate {{runtime_output}} --equation-library library

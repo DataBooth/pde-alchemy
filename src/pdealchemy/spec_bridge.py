@@ -301,11 +301,12 @@ def spec_to_runtime_toml_file(
 ) -> Path:
     """Write runtime TOML bridged from spec TOML and return the output path."""
     rendered = spec_to_runtime_toml_content(spec_toml_path, defaults=defaults)
-    target_path = (
-        output_path
-        if output_path is not None
-        else spec_toml_path.with_name(f"{spec_toml_path.stem}.runtime.toml")
-    )
+    default_output_path = spec_toml_path.with_name(f"{spec_toml_path.stem}.pricing.toml")
+    if spec_toml_path.stem.endswith("_blueprint"):
+        default_output_path = spec_toml_path.with_name(
+            f"{spec_toml_path.stem.removesuffix('_blueprint')}_pricing.toml"
+        )
+    target_path = output_path if output_path is not None else default_output_path
     if target_path.exists() and not overwrite:
         raise ConfigError(
             f"Output file already exists: {target_path}",

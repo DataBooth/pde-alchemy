@@ -44,7 +44,7 @@ class _MockMo:
 
 def _selection(**overrides):
     defaults = {
-        "runtime_toml_path": "examples/notebooks/spec_black_scholes.runtime.toml",
+        "runtime_toml_path": "examples/notebooks/black_scholes_pricing.toml",
         "equation_library_path": "library",
         "compare_backends": True,
         "include_pricing": True,

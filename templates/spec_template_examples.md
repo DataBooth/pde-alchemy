@@ -3,7 +3,7 @@
 
 ## Generate TOML from a specification notebook
 ```bash
-uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite
+uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/black_scholes_blueprint.toml --overwrite
 ```
 
 ## Equation library file examples
