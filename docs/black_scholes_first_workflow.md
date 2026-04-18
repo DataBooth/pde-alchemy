@@ -35,13 +35,26 @@ This catches:
 - unsupported LaTeX commands,
 - malformed algebraic equation blocks.
 
-## 4) Notebook-driven spec baseline
-Validate the notebook-to-TOML path using the baseline Black-Scholes notebook.
+## 4) Notebook-driven spec and runtime bridge baseline
+Validate the notebook-to-TOML path, then bridge to executable runtime TOML.
 
 - `uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite`
-- `uv run pdealchemy validate examples/notebooks/spec_black_scholes.toml`
+- `uv run pdealchemy spec-to-runtime-toml examples/notebooks/spec_black_scholes.toml --output examples/notebooks/spec_black_scholes.runtime.toml --overwrite`
+- `uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --equation-library library`
+- `uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --analytical --tolerance 0.75`
+- `uv run pdealchemy price examples/notebooks/spec_black_scholes.runtime.toml`
+- `uv run pdealchemy explain examples/notebooks/spec_black_scholes.runtime.toml --format markdown`
 
-## 5) Expand incrementally
+## 5) Optional one-command baseline run
+- `just bs-e2e`
+
+## 6) Optional reporting notebooks
+- Results notebook with selectable sections and table/chart outputs:
+  - `just notebook examples/notebooks/black_scholes_results.py`
+- Combined notebook with specification content followed by outputs:
+  - `just notebook examples/notebooks/spec_black_scholes_with_results.py`
+
+## 7) Expand incrementally
 After baseline confidence, expand in this order:
 1. market-structure vanilla route: `examples/vanilla_market_curve_surface.toml`
 2. exotic path-dependent route: `examples/exotic_discrete_asian_barrier_dividend.toml`

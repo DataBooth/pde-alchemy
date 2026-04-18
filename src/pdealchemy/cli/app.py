@@ -18,6 +18,10 @@ from pdealchemy.logging_config import configure_logging
 from pdealchemy.math_bridge import build_symbolic_problem
 from pdealchemy.notebook_spec import notebook_to_toml_file
 from pdealchemy.render import render_explain_output
+from pdealchemy.spec_bridge import (
+    BlackScholesBridgeDefaults,
+    spec_to_runtime_toml_file,
+)
 from pdealchemy.validation import ValidationRunner, validate_equation_library
 
 app = typer.Typer(
@@ -98,6 +102,65 @@ def notebook_to_toml(
         console.print(
             f"[bold green]Notebook conversion successful:[/bold green] wrote `{output_path}`."
         )
+    except PDEAlchemyError as exc:
+        console.print(exc.to_cli_message())
+        raise typer.Exit(code=2) from exc
+
+
+@app.command("spec-to-runtime-toml")
+def spec_to_runtime_toml(
+    spec_path: Path = typer.Argument(..., help="Path to a specification TOML file."),
+    output: Path | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output runtime TOML path. Defaults to <spec>.runtime.toml.",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Overwrite the output file if it already exists.",
+    ),
+    spot: float = typer.Option(100.0, "--spot", help="Spot level S0."),
+    strike: float = typer.Option(100.0, "--strike", help="Strike K."),
+    rate: float = typer.Option(0.05, "--rate", help="Constant risk-free rate r."),
+    volatility: float = typer.Option(0.2, "--volatility", help="Constant volatility sigma."),
+    maturity: float = typer.Option(1.0, "--maturity", help="Option maturity in years."),
+    backend: str = typer.Option(
+        "quantlib",
+        "--backend",
+        help="Runtime backend (`quantlib` or `py_pde`).",
+    ),
+    scheme: str = typer.Option("crank_nicolson", "--scheme", help="Numerical scheme."),
+    time_steps: int = typer.Option(250, "--time-steps", help="Number of time steps."),
+    damping_steps: int = typer.Option(0, "--damping-steps", help="Number of damping steps."),
+    grid_lower: float = typer.Option(0.0, "--grid-lower", help="Lower grid bound for S."),
+    grid_upper: float = typer.Option(400.0, "--grid-upper", help="Upper grid bound for S."),
+    grid_points: int = typer.Option(401, "--grid-points", help="Grid points for S."),
+) -> None:
+    """Bridge a notebook specification TOML into executable runtime pricing TOML."""
+    try:
+        defaults = BlackScholesBridgeDefaults(
+            spot=spot,
+            strike=strike,
+            rate=rate,
+            volatility=volatility,
+            maturity=maturity,
+            backend=backend,
+            scheme=scheme,
+            time_steps=time_steps,
+            damping_steps=damping_steps,
+            grid_lower=grid_lower,
+            grid_upper=grid_upper,
+            grid_points=grid_points,
+        )
+        output_path = spec_to_runtime_toml_file(
+            spec_path,
+            output_path=output,
+            overwrite=overwrite,
+            defaults=defaults,
+        )
+        console.print(f"[bold green]Spec bridge successful:[/bold green] wrote `{output_path}`.")
     except PDEAlchemyError as exc:
         console.print(exc.to_cli_message())
         raise typer.Exit(code=2) from exc
