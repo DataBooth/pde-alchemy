@@ -18,8 +18,18 @@ def _fake_marimo_module() -> SimpleNamespace:
 
 
 class _FakeCodeEditor:
-    def __init__(self, value: str) -> None:
-        self.value = value
+    def __init__(self, value: str, on_change: Any | None = None) -> None:
+        self._value = value
+        self._on_change = on_change
+
+    @property
+    def value(self) -> str:
+        return self._value
+
+    def set_value(self, value: str) -> None:
+        self._value = value
+        if self._on_change is not None:
+            self._on_change(value)
 
 
 class _FakeButton:
@@ -43,6 +53,12 @@ class _NoValueReadButton:
         return self._on_click(None)
 
 
+class _NoValueReadEditor(_FakeCodeEditor):
+    @property
+    def value(self) -> str:
+        raise RuntimeError("Accessing editor.value in creating cell is not allowed")
+
+
 class _FakeUi:
     def code_editor(
         self,
@@ -50,9 +66,10 @@ class _FakeUi:
         *,
         language: str,
         label: str,
+        on_change: Any | None = None,
     ) -> _FakeCodeEditor:
         _ = (language, label)
-        return _FakeCodeEditor(value)
+        return _FakeCodeEditor(value, on_change=on_change)
 
     def button(
         self,
@@ -76,8 +93,31 @@ class _FakeEditorMarimo:
     def vstack(blocks: list[object]) -> tuple[str, list[object]]:
         return ("vstack", blocks)
 
+    @staticmethod
+    def state(value: str) -> tuple[Any, Any]:
+        payload: dict[str, str] = {"value": value}
+
+        def _get() -> str:
+            return payload["value"]
+
+        def _set(new_value: str) -> None:
+            payload["value"] = new_value
+
+        return _get, _set
+
 
 class _NoValueReadUi(_FakeUi):
+    def code_editor(
+        self,
+        value: str,
+        *,
+        language: str,
+        label: str,
+        on_change: Any | None = None,
+    ) -> _NoValueReadEditor:
+        _ = (language, label)
+        return _NoValueReadEditor(value, on_change=on_change)
+
     def button(
         self,
         *,
@@ -99,6 +139,18 @@ class _NoValueReadMarimo:
     @staticmethod
     def vstack(blocks: list[object]) -> tuple[str, list[object]]:
         return ("vstack", blocks)
+
+    @staticmethod
+    def state(value: str) -> tuple[Any, Any]:
+        payload: dict[str, str] = {"value": value}
+
+        def _get() -> str:
+            return payload["value"]
+
+        def _set(new_value: str) -> None:
+            payload["value"] = new_value
+
+        return _get, _set
 
 
 def test_math_eq_renders_raw_latex(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -242,7 +294,7 @@ def test_math_eq_editor_persists_edited_source(
     rendered = notebook_utils.math_eq_editor(str(equation_file))
     editor = next(block for block in rendered[1] if isinstance(block, _FakeCodeEditor))
     button = next(block for block in rendered[1] if isinstance(block, _FakeButton))
-    editor.value = "\\[\nS-K\n\\]"
+    editor.set_value("\\[\nS-K\n\\]")
 
     button.click()
 

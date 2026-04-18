@@ -96,16 +96,18 @@ def math_eq_editor(
         source_text = _read_equation_source(source_path)
     except OSError as exc:
         return mo.md(f"**Error loading equation file** `{content}`: {exc}")
+    get_source_text, set_source_text = mo.state(source_text)
 
     source_editor = mo.ui.code_editor(
         value=source_text,
         language="markdown",
         label=f"Equation source: {content}",
+        on_change=set_source_text,
     )
 
     def _save_source(_value: object) -> str:
         try:
-            source_path.write_text(str(source_editor.value), encoding="utf-8")
+            source_path.write_text(str(get_source_text()), encoding="utf-8")
         except OSError as exc:
             return f"Save failed: {exc}"
         return f"Saved `{content}`."
@@ -116,7 +118,7 @@ def math_eq_editor(
         kind="success",
     )
     preview = _render_equation_block(
-        latex=_extract_first_latex_block(str(source_editor.value)),
+        latex=_extract_first_latex_block(str(get_source_text())),
         name=name,
         mo=mo,
     )
