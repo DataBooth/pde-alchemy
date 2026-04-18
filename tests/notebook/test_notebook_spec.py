@@ -100,6 +100,31 @@ def test_notebook_to_toml_supports_app_cell_call_decorator(tmp_path: Path) -> No
     assert 'equation_file = "library/pde/black_scholes.md"' in rendered
 
 
+def test_notebook_to_toml_supports_math_eq_editor_helper(tmp_path: Path) -> None:
+    notebook_path = tmp_path / "spec_math_eq_editor.py"
+    _write_notebook(
+        notebook_path,
+        [
+            "import marimo as mo",
+            "from pdealchemy.notebook_utils import math_eq_editor",
+            "",
+            "app = mo.App()",
+            "",
+            'mo.md("# Editor Helper")',
+            "",
+            "@app.cell",
+            "def pde():",
+            '    """Main PDE operator."""',
+            '    math_eq_editor("library/pde/black_scholes.md", name="Main PDE operator")',
+        ],
+    )
+
+    rendered = notebook_to_toml_content(notebook_path)
+
+    assert "[mathematics.operator]" in rendered
+    assert 'equation_file = "library/pde/black_scholes.md"' in rendered
+
+
 def test_notebook_to_toml_ignores_unknown_cells(tmp_path: Path) -> None:
     notebook_path = tmp_path / "spec_mixed_cells.py"
     _write_notebook(

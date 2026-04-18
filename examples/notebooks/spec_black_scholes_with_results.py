@@ -1,12 +1,11 @@
 import marimo
 
-__generated_with = "0.22.4"
+__generated_with = "0.23.1"
 app = marimo.App(width="medium")
 
 
 @app.cell
 def notebook_context():
-
     import marimo as mo
 
     from pdealchemy.exceptions import PDEAlchemyError
@@ -19,7 +18,7 @@ def notebook_context():
         render_notebook_report_controls,
         selection_from_controls,
     )
-    from pdealchemy.notebook_utils import math_eq, spec_md
+    from pdealchemy.notebook_utils import math_eq, math_eq_editor, spec_md
 
     pdealchemy_error = PDEAlchemyError
     return (
@@ -29,6 +28,7 @@ def notebook_context():
         compose_report_view,
         create_notebook_report_controls,
         math_eq,
+        math_eq_editor,
         mo,
         pdealchemy_error,
         render_notebook_report_controls,
@@ -89,8 +89,8 @@ def sde(math_eq):
 
 
 @app.cell
-def pde(math_eq):
-    math_eq("library/pde/black_scholes.md", name="Main PDE operator")
+def pde(math_eq_editor):
+    math_eq_editor("library/pde/black_scholes.md", name="Main PDE operator")
     return
 
 
@@ -184,12 +184,7 @@ def _(
 
 
 @app.cell
-def _(
-    build_report_table_views,
-    mo,
-    report,
-    selection,
-):
+def _(build_report_table_views, mo, report, selection):
     table_views = build_report_table_views(
         mo,
         report=report,
@@ -199,11 +194,7 @@ def _(
 
 
 @app.cell
-def _(
-    build_report_chart_views,
-    report,
-    selection,
-):
+def _(build_report_chart_views, report, selection):
     chart_views = build_report_chart_views(
         report=report,
         selection=selection,
@@ -212,7 +203,7 @@ def _(
 
 
 @app.cell
-def _(chart_views: list[object], compose_report_view, error_view, mo, table_views: list[object]):
+def _(chart_views, compose_report_view, error_view, mo, table_views):
     view = compose_report_view(
         mo,
         error_view=error_view,
