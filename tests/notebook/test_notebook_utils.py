@@ -31,6 +31,18 @@ class _FakeButton:
         self.value = self._on_click(None)
 
 
+class _NoValueReadButton:
+    def __init__(self, on_click: Any) -> None:
+        self._on_click = on_click
+
+    @property
+    def value(self) -> Any:
+        raise RuntimeError("Accessing button.value in creating cell is not allowed")
+
+    def click(self) -> Any:
+        return self._on_click(None)
+
+
 class _FakeUi:
     def code_editor(
         self,
@@ -55,6 +67,30 @@ class _FakeUi:
 
 class _FakeEditorMarimo:
     ui = _FakeUi()
+
+    @staticmethod
+    def md(text: str) -> tuple[str, str]:
+        return ("md", text)
+
+    @staticmethod
+    def vstack(blocks: list[object]) -> tuple[str, list[object]]:
+        return ("vstack", blocks)
+
+
+class _NoValueReadUi(_FakeUi):
+    def button(
+        self,
+        *,
+        on_click: Any,
+        label: str,
+        kind: str,
+    ) -> _NoValueReadButton:
+        _ = (label, kind)
+        return _NoValueReadButton(on_click)
+
+
+class _NoValueReadMarimo:
+    ui = _NoValueReadUi()
 
     @staticmethod
     def md(text: str) -> tuple[str, str]:
@@ -222,6 +258,19 @@ def test_math_eq_editor_rejects_missing_file(monkeypatch: pytest.MonkeyPatch) ->
     assert rendered[0] == "md"
     assert "Error loading equation file" in rendered[1]
     assert "file not found" in rendered[1]
+
+
+def test_math_eq_editor_does_not_access_button_value_in_creator_cell(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    equation_file = tmp_path / "equation.md"
+    equation_file.write_text("\\[\nS\n\\]", encoding="utf-8")
+    monkeypatch.setattr(notebook_utils, "_load_marimo_module", lambda: _NoValueReadMarimo)
+
+    rendered = notebook_utils.math_eq_editor(str(equation_file))
+
+    assert rendered[0] == "vstack"
 
 
 def test_load_marimo_module_raises_config_error_when_missing(

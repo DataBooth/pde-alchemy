@@ -115,12 +115,6 @@ def math_eq_editor(
         label=save_label,
         kind="success",
     )
-    save_status = save_button.value
-    status_message = (
-        f"_Save status_: {save_status}"
-        if save_status is not None
-        else "_Edit the source and click Save equation file to persist changes._"
-    )
     preview = _render_equation_block(
         latex=_extract_first_latex_block(str(source_editor.value)),
         name=name,
@@ -131,7 +125,7 @@ def math_eq_editor(
             mo.md(f"### Inline equation source editor\n\n`{content}`"),
             source_editor,
             save_button,
-            mo.md(status_message),
+            mo.md("_Edit the source and click Save equation file to persist changes._"),
             preview,
         ]
     )
