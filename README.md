@@ -113,7 +113,7 @@ uv run pdealchemy validate path/to/config.toml
 uv run pdealchemy explain path/to/config.toml --format markdown
 uv run pdealchemy validate path/to/config.toml --analytical --tolerance 0.75
 uv run pdealchemy validate path/to/config.toml --equation-library library
-uv run pdealchemy spec-to-runtime-toml path/to/spec.toml --output path/to/runtime.toml --overwrite
+uv run pdealchemy spec-to-runtime-toml path/to/spec.toml --output path/to/pricing.toml --overwrite
 uv run pdealchemy price path/to/config.toml
 ```
 
@@ -171,11 +171,11 @@ PDEAlchemy also supports notebook-first specification authoring with semantic ce
 
 Convert a specification notebook into TOML:
 ```bash
-uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite
+uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/black_scholes_blueprint.toml --overwrite
 ```
 Bridge spec TOML to executable runtime TOML:
 ```bash
-uv run pdealchemy spec-to-runtime-toml examples/notebooks/spec_black_scholes.toml --output examples/notebooks/spec_black_scholes.runtime.toml --overwrite
+uv run pdealchemy spec-to-runtime-toml examples/notebooks/black_scholes_blueprint.toml --output examples/notebooks/black_scholes_pricing.toml --overwrite
 ```
 
 Or use just recipes:

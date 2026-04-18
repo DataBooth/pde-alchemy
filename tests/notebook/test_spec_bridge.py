@@ -58,13 +58,22 @@ def test_spec_to_runtime_toml_content_renders_runtime_shape(tmp_path: Path) -> N
     assert "[numerics.grid]" in rendered
 
 
-def test_spec_to_runtime_toml_file_writes_default_runtime_suffix(tmp_path: Path) -> None:
+def test_spec_to_runtime_toml_file_writes_default_pricing_suffix(tmp_path: Path) -> None:
     spec_path = tmp_path / "spec_black_scholes.toml"
     _write_spec_toml(spec_path)
 
     output_path = spec_to_runtime_toml_file(spec_path, overwrite=True)
+    assert output_path == tmp_path / "spec_black_scholes.pricing.toml"
+    assert output_path.exists()
 
-    assert output_path == tmp_path / "spec_black_scholes.runtime.toml"
+
+def test_spec_to_runtime_toml_file_rewrites_blueprint_suffix(tmp_path: Path) -> None:
+    spec_path = tmp_path / "black_scholes_blueprint.toml"
+    _write_spec_toml(spec_path)
+
+    output_path = spec_to_runtime_toml_file(spec_path, overwrite=True)
+
+    assert output_path == tmp_path / "black_scholes_pricing.toml"
     assert output_path.exists()
 
 

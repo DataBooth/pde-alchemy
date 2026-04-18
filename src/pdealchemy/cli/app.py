@@ -114,7 +114,7 @@ def spec_to_runtime_toml(
         None,
         "--output",
         "-o",
-        help="Output runtime TOML path. Defaults to <spec>.runtime.toml.",
+        help="Output pricing TOML path. Defaults to <spec>.pricing.toml.",
     ),
     overwrite: bool = typer.Option(
         False,

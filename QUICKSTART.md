@@ -22,27 +22,26 @@ The notebook is the authoring entry point for:
 ## 3) Convert notebook spec to TOML
 Export the notebook semantics into TOML:
 ```bash
-uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite
+uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/black_scholes_blueprint.toml --overwrite
 ```
-
-## 4) Bridge spec TOML to runtime TOML
-Generate an executable pricing config from the notebook spec artefact:
+## 4) Bridge blueprint TOML to pricing TOML
+Generate an executable pricing config from the notebook blueprint artefact:
 ```bash
-uv run pdealchemy spec-to-runtime-toml examples/notebooks/spec_black_scholes.toml --output examples/notebooks/spec_black_scholes.runtime.toml --overwrite
+uv run pdealchemy spec-to-runtime-toml examples/notebooks/black_scholes_blueprint.toml --output examples/notebooks/black_scholes_pricing.toml --overwrite
 ```
 
 ## 5) Validate the equation library
 Run constrained LaTeX validation for equations in `library/` together with runtime schema checks:
 ```bash
-uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --equation-library library
+uv run pdealchemy validate examples/notebooks/black_scholes_pricing.toml --equation-library library
 ```
 
 ## 6) Run baseline pricing and explain outputs
 Use the bridged runtime config for pricing and explainability checks:
 ```bash
-uv run pdealchemy validate examples/notebooks/spec_black_scholes.runtime.toml --analytical --tolerance 0.75
-uv run pdealchemy price examples/notebooks/spec_black_scholes.runtime.toml
-uv run pdealchemy explain examples/notebooks/spec_black_scholes.runtime.toml --format markdown
+uv run pdealchemy validate examples/notebooks/black_scholes_pricing.toml --analytical --tolerance 0.75
+uv run pdealchemy price examples/notebooks/black_scholes_pricing.toml
+uv run pdealchemy explain examples/notebooks/black_scholes_pricing.toml --format markdown
 ```
 
 ## 7) Optional: run the full baseline chain in one command

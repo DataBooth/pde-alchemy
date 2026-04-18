@@ -63,8 +63,8 @@ Start from the simplest deterministic baseline and add complexity incrementally.
 - `uv run pdealchemy validate examples/vanilla_european_call.toml --equation-library library`
 
 4. Notebook-to-TOML baseline check
-- `uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/spec_black_scholes.toml --overwrite`
-- `uv run pdealchemy validate examples/notebooks/spec_black_scholes.toml`
+- `uv run pdealchemy notebook-to-toml examples/notebooks/spec_black_scholes.py --output examples/notebooks/black_scholes_blueprint.toml --overwrite`
+- `uv run pdealchemy validate examples/notebooks/black_scholes_blueprint.toml`
 
 5. Only then move to richer routes
 - market curve/surface example (`examples/vanilla_market_curve_surface.toml`)
